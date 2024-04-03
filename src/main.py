@@ -1,94 +1,80 @@
-import os
-import re
-import requests
 import traceback
-from lxml import html
-from base64 import b64encode
-from lxml.html import HtmlElement
-from utils import color, get_img_ext
-from selenium.webdriver.common.by import By
-from fastapi import FastAPI,APIRouter, Query
+import multiprocessing
+from random import randint
+from time import time, sleep
+from fastapi import FastAPI
+from article_scraper import ArticleScraper
+    
 
-class ArticleScraper:
-    def __init__(self):
-        self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
-        
-        self.router = APIRouter()
-        self.router.add_api_route("/", self.scrape, methods=["GET"])
-
-
-    def scrape(self, url:str = Query(...)):        
-        scraper_map = {"timesofmalta":self.scrape_tom,
-                       "theshiftnews":self.scrape_ts}
-        match = re.search(r"(?:https?:\/\/)(?:www\.)?([a-zA-Z0-9-]+)\.com", url)
-
-        #Ensure that the provided website is valid
-        if match and (key:=match.group(1)) in scraper_map.keys():
-            return scraper_map[key](url)
-        else:
-            return {'status':400, 'data':{}, 'error':f"{url} does not belong to the following domain names: {list(scraper_map.keys())}"}
-        
-    def scrape_tom(self,url:str):
-        
-        if (k:="timesofmalta.com/article/") not in url:
-            return {'status':400, 'data':{}, 'error':f"URL does not include sub-string {k}"}
-        
+def gpu_proc(queue_1:multiprocessing.Queue,queue_2:multiprocessing.Queue):
+    
+    while True:
         try:
-            #Get article
-            content = requests.get(url,headers=self.headers).content.decode('utf-8')
-
-            tree = html.fromstring(content)
-
-            #Get Title
-            title = tree.xpath('/html/head/title')[0].text
-
-            #Get links to Thumbnail + Images
-            img_links = tree.xpath('//*[@id="observer"]/main/article/div[2]/div/*/img') + \
-                        tree.xpath(f'//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]')
-
-            #Save byte data of images to list
-            imgs = [{"img": {"data":b64encode(requests.get(k:=img.attrib['src']).content),
-                             "file":get_img_ext(k)},
-                     "alt": img.attrib['alt']}
-                    for img in img_links]
-        
-            #Get Body
-            body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
-
+            return_payload = {}
+            payload = queue_1.get()
+            
+            sleep(randint(0,7))
+            
+            #TODO:Use GPU to process `payload` in order to produce `return_payload`
+            return_payload = {"this_job_no":payload["this_job_no"],
+                              "data":"Meaningful extension data here",
+                              "error":""}
         except Exception as e:
-            traceback.print_exc()
-            error = traceback.format_exc()
-            return {'status':400, 'data':{}, 'error':f"Unexpected Error: {error}"}
+            return_payload = {"this_job_no":payload["this_job_no"],
+                              "data":"",
+                              "error":f"Unexpected Error: {traceback.format_exc()}"}
+        finally:
+            queue_2.put(return_payload)
+            
 
-        print(f"{color.BLUE}HEYY{color.ESC}")
-        return {"status":200, "data":{"title":title, "imgs":imgs, "body" :body}, 'error':""}
 
-    def scrape_ts(self,url:str):
-        
-        self.driver.get(url)
-
-        title = self.driver.find_element(By.XPATH,'//*[@id="container"]/h2').text
-        body  = self.driver.find_element(By.XPATH,'//*[@id="container"]/div[4]').text
-
-        #Get Images + Captions
-        img_links = self.driver.find_elements(By.CLASS_NAME,'featured_image') + \
-                    self.driver.find_elements(By.CLASS_NAME,'wp-caption alignnone')
-
-        imgs = []
-
-        for img_link in enumerate(img_links):
-            img_data =  requests.get(img_link.find_element(By.TAG_NAME,'img')
-                                             .get_attribute('src')).content
-            img_caption = img_link.find_element(By.CLASS_NAME,"wp-caption-text").text
-            imgs.append((img_data,img_caption))
-        
-        return {"title":title, "imgs":imgs, "body" :body}
-
-    def get_nested_text(self,element:HtmlElement): 
-        return "".join([(child.text or "") + self.get_nested_text(child) + (child.tail or "")
-                        for child in element.iterchildren()
-                        if child.tag in ['p','strong','i','b','u','em','a']])
-       
 app = FastAPI()
 artScraper = ArticleScraper()
-app.include_router(artScraper.router)
+init:bool = False
+job_no:int = 0
+
+queue_1: multiprocessing.Queue = None
+queue_2: multiprocessing.Queue = None
+        
+
+
+@app.get("/")
+async def endpoint(url:str=""):
+    
+    global init, job_no, artScraper, queue_1, queue_2
+    
+    if not init:
+        #Queues for maintaining communication between this process and `gpu_proc`
+        queue_1 = multiprocessing.Queue()
+        queue_2 = multiprocessing.Queue()
+
+        #Initialise GPU backend
+        job = multiprocessing.Process(target=gpu_proc, args=(queue_1,queue_2))
+        job.start()
+        
+        #Initialisaion ready
+        init=True
+      
+
+    this_job_no = job_no
+    job_no = (job_no+1)%256 #Handles theoretical edge case where integer reaches limit
+    
+    #Extract data from URL to pass to `gpu_proc`
+    payload = artScraper.scrape(url)
+    
+    #Place data in queue_1 to be read by `gpu_proc`
+    queue_1.put({"this_job_no":this_job_no, "payload":payload})
+    
+    #Await the return payload from `gpu_proc`
+    #Make sure the output we retrieved is the one produced by our payload.
+    
+    print(f'S: {this_job_no}')
+    s=time()
+    
+    while (response:=queue_2.get())['this_job_no'] != this_job_no:
+        queue_2.put(response) #Place output back in queue_2 for correct process to consume
+        
+    print(f'R: {this_job_no} [{round(time()-s,2)}s]')
+    
+    return response        
+    

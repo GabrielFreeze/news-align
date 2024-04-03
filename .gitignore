@@ -3,5 +3,5 @@
 !.gitignore
 !src/main.py
 !src/utils.py
-!src/utils.py
+!src/article_scraper.py
 !LICENSE
