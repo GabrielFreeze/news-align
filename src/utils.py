@@ -1,3 +1,6 @@
+import json
+from warnings import warn
+
 class color:
     WHITE = '\033[95m'
     BLUE = '\033[94m'
@@ -18,3 +21,27 @@ def get_img_ext(img_link):
     elif img_link.endswith('.png'):
         return '.png'
     else: return ""
+    
+    
+class Payload():
+    def __init__(self,error:str="",data:dict={}):
+         
+        self.error:str = error
+        self.data:dict = data
+        
+        if not error and not data:
+            warn("Am empty payload was initialised")    
+        
+    def to_dict(self) -> dict:
+        return {"data":self.data,"error":self.error}
+    
+    def __str__(self) -> str:
+        return json.dumps(self.to_dict(),indent=1)
+    
+    
+class GPU_Payload(Payload):
+    def __init__(self,job_no:int,payload:Payload):
+        super().__init__(error=payload.error,
+                         data=payload.data)
+        self.job_no = job_no
+    

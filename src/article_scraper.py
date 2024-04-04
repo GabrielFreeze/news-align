@@ -4,14 +4,13 @@ import traceback
 from lxml import html
 from base64 import b64encode
 from lxml.html import HtmlElement
-from utils import color, get_img_ext
-
+from utils import color, get_img_ext, Payload
 
 class ArticleScraper:
     def __init__(self):
         self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
 
-    def scrape(self, url:str):
+    def scrape(self, url:str) -> Payload:
         scraper_map = {"timesofmalta":self.scrape_tom,
                        "theshiftnews":self.scrape_ts}
         match = re.search(r"(?:https?:\/\/)(?:www\.)?([a-zA-Z0-9-]+)\.com", url)
@@ -20,12 +19,12 @@ class ArticleScraper:
         if match and (key:=match.group(1)) in scraper_map.keys():
             return scraper_map[key](url)
         else:
-            return {'status':400, 'data':{}, 'error':f"{url} does not belong to the following domain names: {list(scraper_map.keys())}"}
+            return Payload(error=f"{url} does not belong to the following domain names: {list(scraper_map.keys())}")
         
     def scrape_tom(self,url:str):
         
         if (k:="timesofmalta.com/article/") not in url:
-            return {'status':400, 'data':{}, 'error':f"URL does not include sub-string {k}"}
+            return Payload(error=f"URL does not include sub-string {k}")
         
         try:
             #Get article
@@ -50,16 +49,14 @@ class ArticleScraper:
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
 
         except Exception as e:
-            traceback.print_exc()
-            error = traceback.format_exc()
-            return {'status':400, 'data':{}, 'error':f"Unexpected Error: {error}"}
+            return Payload(error=f"Unexpected Error: {traceback.format_exc()}")
 
-        return {"status":200, "data":{"title":title, "imgs":imgs, "body" :body}, 'error':""}
+        return Payload(data={"title":title, "imgs":imgs, "body" :body})
 
     def scrape_ts(self,url:str):
         
         if not re.search(r"(?:https?:\/\/)(?:www\.)?theshiftnews\.com\/[0-9]{4}\/[0-9]{2}\/[0-9]{2}\/",url):
-            return {'status':400, 'data':{}, 'error':f"URL is not a valid TheShiftNews article"}
+            return Payload(error=f"URL is not a valid TheShiftNews article")
         
         try:
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
@@ -75,11 +72,6 @@ class ArticleScraper:
 
             title = tree.xpath('//*[@id="container"]/h2')[0].text
 
-            #Get Caption (if any)
-            if c:=tree.xpath('//*[@id="container"]/div[1]/div/p'):
-                caption = c[0].text
-            else: caption = ""
-            
             #Get Body
             body = ' '.join([b.text for b in tree.xpath('//*[@id="container"]/div[4]/p') if type(b.text) == str])
 
@@ -94,11 +86,9 @@ class ArticleScraper:
                     for img in img_links]
         
         except Exception as e:
-            traceback.print_exc()
-            error = traceback.format_exc()
-            return {'status':400, 'data':{}, 'error':f"Unexpected Error: {error}"}
+            return Payload(f"Unexpected Error: {traceback.format_exc()}")
         
-        return {"status":200, "data":{"title":title, "imgs":imgs, "body" :body}, 'error':""}       
+        return Payload(data={"title":title, "imgs":imgs, "body" :body})
 
     def get_nested_text(self,element:HtmlElement): 
         return "".join([(child.text or "") + self.get_nested_text(child) + (child.tail or "")
