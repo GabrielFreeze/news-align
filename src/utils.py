@@ -30,18 +30,16 @@ class Payload():
         self.data:dict = data
         
         if not error and not data:
-            warn("Am empty payload was initialised")    
+            warn("An empty payload was initialised")    
         
     def to_dict(self) -> dict:
         return {"data":self.data,"error":self.error}
-    
-    def __str__(self) -> str:
-        return json.dumps(self.to_dict(),indent=1)
     
     
 class GPU_Payload(Payload):
     def __init__(self,job_no:int,payload:Payload):
         super().__init__(error=payload.error,
                          data=payload.data)
+        
         self.job_no = job_no
-    
+        

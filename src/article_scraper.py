@@ -49,6 +49,7 @@ class ArticleScraper:
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
 
         except Exception as e:
+            traceback.print_exc()
             return Payload(error=f"Unexpected Error: {traceback.format_exc()}")
 
         return Payload(data={"title":title, "imgs":imgs, "body" :body})
@@ -86,6 +87,7 @@ class ArticleScraper:
                     for img in img_links]
         
         except Exception as e:
+            traceback.print_exc()
             return Payload(f"Unexpected Error: {traceback.format_exc()}")
         
         return Payload(data={"title":title, "imgs":imgs, "body" :body})
