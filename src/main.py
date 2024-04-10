@@ -48,7 +48,7 @@ async def endpoint(url:str=""):
     #Don't invoke job if error in scraping
     if payload.error:
         return payload
-        
+    
     #Place data in queue_1 to be read by `gpu_proc`
     #Very important that I use kwargs due to `__init__` overloading.
     queue_1.put(GPU_Payload(job_no=this_job_no,

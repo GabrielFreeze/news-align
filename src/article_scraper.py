@@ -1,8 +1,12 @@
 import re
+import urllib
 import requests
 import traceback
 from lxml import html
 from base64 import b64encode
+from selenium import webdriver
+from datetime import datetime, timedelta
+from selenium.webdriver.common.by import By
 from lxml.html import HtmlElement
 from utils import color, get_img_ext, Payload
 
@@ -23,26 +27,36 @@ class ArticleScraper:
         
     def scrape_tom(self,url:str):
         
+
+
+        #Closing pop-ups
+        print('Closing initial pop-ups: ',end='')
+        driver.find_element(By.XPATH,'/html/body/div[3]/div[2]/div[1]/div[2]/div[2]/button[1]/p').click()
+        
         if (k:="timesofmalta.com/article/") not in url:
             return Payload(error=f"URL does not include sub-string {k}")
         
         try:
             #Get article
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
-
-            tree = html.fromstring(content)
+        
+            tree = html.fromstring(content)          
 
             #Get Title
             title = tree.xpath('/html/head/title')[0].text
 
             #Get links to Thumbnail + Images
-            img_links = tree.xpath('//*[@id="observer"]/main/article/div[2]/div/*/img') + \
-                        tree.xpath(f'//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]')
-
+            driver = webdriver.Chrome()
+            driver.get(url) #ToM websites are rendered using JavaScript so we have to use Selenium.
+            img_links = driver.find_elements(By.XPATH,'//*[@id="article-head"]/div/picture/img') + \
+                        driver.find_elements(By.XPATH,'//*[@id="observer"]/main/article/div[2]/div/*/img')
+            driver.quit()
+            
+                        
             #Save byte data of images to list
-            imgs = [{"img": {"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
+            imgs = [{"img": {"data":b64encode(requests.get(k:=img.get_attribute('src')).content).decode("ascii"),
                              "file":get_img_ext(k)},
-                     "alt": img.attrib['alt']}
+                     "alt": img.get_attribute('alt')}
                     for img in img_links]
         
             #Get Body
