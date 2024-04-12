@@ -1,9 +1,8 @@
 *
 !*/
 !.gitignore
-!src/backendend/main.py
-!src/backendend/utils.py
-!src/backendend/article_scraper.py
+!src/backend/main.py
+!src/backend/utils.py
+!src/backend/article_scraper.py
 !src/frontend/*
-
 !LICENSE
