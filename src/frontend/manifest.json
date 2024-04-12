@@ -1,0 +1,21 @@
+{
+    "manifest_version": 3,
+    "name": "NB Extension",
+    "description": "Extension to show bias-indicative results using AI",
+    "version": "2024.04.11",
+
+    "action": {
+      "default_popup": "default_popup.html",
+      "default_icon": "images/default_icon.png"
+    },
+
+    "content_scripts": [
+        {
+          "js": ["scripts/content.js"],
+          "matches": [
+            "https://timesofmalta.com/article/*"
+          ]
+        }
+      ]
+  }
+  
