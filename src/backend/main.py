@@ -1,11 +1,12 @@
 import asyncio
-from time import time
-from random import randint
+from time import time,sleep
 import multiprocessing
+from random import randint
 from fastapi import FastAPI
 from gpu_backend import GPU_Backend
-from utils import Payload, GPU_Payload, color
+from fastapi.responses import JSONResponse
 from article_scraper import ArticleScraper
+from utils import Payload, GPU_Payload, color
 from fastapi.middleware.cors import CORSMiddleware
     
 app = FastAPI()
@@ -26,9 +27,10 @@ queue_1: multiprocessing.Queue = None
 queue_2: multiprocessing.Queue = None
         
 
- #TODO: Multiple requests are not being handled
+
 @app.get("/")
-async def endpoint(url:str=""):
+def _endpoint(url:str="") -> dict:
+    
     global init, job_no, artScraper, queue_1, queue_2
     
     if not init:
@@ -54,7 +56,6 @@ async def endpoint(url:str=""):
     s=time()
     payload:Payload = artScraper.scrape(url)
     print(f'[{this_job_no}] Scraping finished: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
-
     
     #Don't invoke job if error in scraping
     if payload.error:
@@ -73,8 +74,6 @@ async def endpoint(url:str=""):
     
     print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
     
-    
-    #`job_no` is not included in the dict
     return return_payload.to_dict()
     
     

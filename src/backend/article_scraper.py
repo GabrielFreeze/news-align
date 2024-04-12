@@ -1,4 +1,5 @@
 import re
+import json
 import requests
 import traceback
 from lxml import html
@@ -14,10 +15,9 @@ class ArticleScraper:
         self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
         
         #Initialise Selenium webdriver in cases were JS is required to fully load page.
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--log-level=3")
-        self.driver = webdriver.Chrome(options=chrome_options)
+        self.chrome_options = Options()
+        self.chrome_options.add_argument("--headless")
+        self.chrome_options.add_argument("--log-level=3")
         
     def scrape(self, url:str) -> Payload:
         scraper_map = {"timesofmalta":self.scrape_tom,
@@ -38,14 +38,30 @@ class ArticleScraper:
         try:
             #Get article
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
-        
+
+            with open('test.html','w') as f:
+                f.write(content)
+            
             tree = html.fromstring(content)          
 
             #Get Title
             title = tree.xpath('/html/head/title')[0].text
-
-            #Get links to Thumbnail + Images
+            script = json.loads(tree.xpath('//*[@id="article-ld"]')[0].text)
+            print(json.dumps(script,indent=1)) #TODO: IN here is the link to the image which will allow me to circumvent using Selenium. I need to implement this
             
+            #//*[@id="observer"]/main/article/div[2]/div/*/img
+            # thumbnail = tree.xpath('//meta[@property="og:image"]').attrib['content']
+            # imgs = tree.xpath(f'//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]')
+
+            
+            # #Save byte data of images to list
+            # imgs_bytes = [{"img": {"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
+            #                        "file":get_img_ext(k)},
+            #                "alt": img.get_attribute('alt')}
+            #               for img in imgs]
+            
+            #Get links to Thumbnail + Images
+            self.driver = webdriver.Chrome(options=self.chrome_options)
             self.driver.get(url) #ToM websites are rendered using JavaScript so we have to use Selenium.
             img_links = self.driver.find_elements(By.XPATH,'//*[@id="article-head"]/div/picture/img') + \
                         self.driver.find_elements(By.XPATH,'//*[@id="observer"]/main/article/div[2]/div/*/img')
