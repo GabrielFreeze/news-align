@@ -39,7 +39,7 @@ class ArticleScraper:
             #Get article
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
 
-            with open('test.html','w') as f:
+            with open('test.html','w',encoding='utf-8') as f:
                 f.write(content)
             
             tree = html.fromstring(content)          
@@ -47,30 +47,45 @@ class ArticleScraper:
             #Get Title
             title = tree.xpath('/html/head/title')[0].text
             script = json.loads(tree.xpath('//*[@id="article-ld"]')[0].text)
-            print(json.dumps(script,indent=1)) #TODO: IN here is the link to the image which will allow me to circumvent using Selenium. I need to implement this
             
-            #//*[@id="observer"]/main/article/div[2]/div/*/img
-            # thumbnail = tree.xpath('//meta[@property="og:image"]').attrib['content']
-            # imgs = tree.xpath(f'//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]')
+            # print(json.dumps(script['@graph'][0]['image'],indent=1))
+            
+            
+            #There existsw multiple versions of a given image.
+            #Get all images with the same caption as the first image (the thumbnail)
+            all_imgs = script['@graph'][0]['image']
+            all_imgs = [img for img in all_imgs
+                        if all_imgs[0]['caption'] == img['caption']]
+            
+            #Get the thumbnail image with the highest resolution
+            thumbnail = sorted(all_imgs,key=lambda img: img['height']*img['width'],
+                               reverse=True)[0]
+            
+            thumbnail_bytes = {"img": {"data":b64encode(requests.get(thumbnail['@id']).content).decode("ascii"),
+                                       "file":get_img_ext(k)},
+                               "alt": thumbnail['caption']}
+            
+            print(thumbnail['caption'])
+            
+            imgs = tree.xpath(f'//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]')
 
-            
-            # #Save byte data of images to list
-            # imgs_bytes = [{"img": {"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
-            #                        "file":get_img_ext(k)},
-            #                "alt": img.get_attribute('alt')}
-            #               for img in imgs]
+            #Save byte data of images to list
+            imgs_bytes = [{"img": {"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
+                                   "file":get_img_ext(k)},
+                           "alt": img.get_attribute('alt')}
+                          for img in imgs]
             
             #Get links to Thumbnail + Images
-            self.driver = webdriver.Chrome(options=self.chrome_options)
-            self.driver.get(url) #ToM websites are rendered using JavaScript so we have to use Selenium.
-            img_links = self.driver.find_elements(By.XPATH,'//*[@id="article-head"]/div/picture/img') + \
-                        self.driver.find_elements(By.XPATH,'//*[@id="observer"]/main/article/div[2]/div/*/img')
+            # self.driver = webdriver.Chrome(options=self.chrome_options)
+            # self.driver.get(url) #ToM websites are rendered using JavaScript so we have to use Selenium.
+            # img_links = self.driver.find_elements(By.XPATH,'//*[@id="article-head"]/div/picture/img') + \
+            #             self.driver.find_elements(By.XPATH,'//*[@id="observer"]/main/article/div[2]/div/*/img')
             
-            #Save byte data of images to list
-            imgs = [{"img": {"data":b64encode(requests.get(k:=img.get_attribute('src')).content).decode("ascii"),
-                             "file":get_img_ext(k)},
-                     "alt": img.get_attribute('alt')}
-                    for img in img_links]
+            # #Save byte data of images to list
+            # imgs = [{"img": {"data":b64encode(requests.get(k:=img.get_attribute('src')).content).decode("ascii"),
+            #                  "file":get_img_ext(k)},
+            #          "alt": img.get_attribute('alt')}
+            #         for img in img_links]
                     
             #Get Body
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
@@ -79,7 +94,7 @@ class ArticleScraper:
             traceback.print_exc()
             return Payload(error=f"Unexpected Error: {traceback.format_exc()}")
 
-        return Payload(data={"title":title, "imgs":imgs, "body" :body})
+        return Payload(data={"title":title, "imgs":[thumbnail_bytes]+imgs_bytes, "body" :body})
 
     def scrape_ts(self,url:str):
         

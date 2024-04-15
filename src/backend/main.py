@@ -59,7 +59,7 @@ def _endpoint(url:str="") -> dict:
     
     #Don't invoke job if error in scraping
     if payload.error:
-        return payload
+        return payload.to_dict()
     
     #Place data in queue_1 to be read by `gpu_proc`
     #Very important that I use kwargs due to `__init__` overloading.
