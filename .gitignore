@@ -2,7 +2,10 @@
 !*/
 !.gitignore
 !src/backend/main.py
+!src/backend/gpu_backend.py
 !src/backend/utils.py
 !src/backend/article_scraper.py
-!src/frontend/*
+
+!src/frontend/images/*
+!src/frontend/scripts/*
 !LICENSE
