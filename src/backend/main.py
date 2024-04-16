@@ -56,7 +56,7 @@ def _endpoint(url:str="") -> dict:
     s=time()
     payload:Payload = artScraper.scrape(url)
     print(f'[{this_job_no}] Scraping finished: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
-    
+        
     #Don't invoke job if error in scraping
     if payload.error:
         return payload.to_dict()
@@ -70,7 +70,20 @@ def _endpoint(url:str="") -> dict:
     #Make sure the output we retrieved is the one produced by our payload.
     while (return_payload:=queue_2.get()).job_no != this_job_no and not return_payload.error:
         print(return_payload.error)
-        queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume
+        queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume    
+        
+    #Group the scores by css selector.
+    grouped = {}
+    for img_txt in return_payload.data['img_txt']:
+        css = img_txt['css-selector']
+        
+        if css not in grouped:
+            grouped[css] = []
+            
+        grouped[css].append(img_txt['score'])
+         
+    return_payload.data['img_txt'] = grouped
+    
     
     print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
     

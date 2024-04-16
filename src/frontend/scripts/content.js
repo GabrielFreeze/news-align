@@ -1,35 +1,44 @@
 
 function insert_data(selector, txt) {
-    const placement_DOM = document.querySelector(selector);
+    const placementDOMs = document.querySelectorAll(selector);
     
-    // Guard-Clause if DOM is not found
-    if (!placement_DOM){
-        console.error("DOM ",selection, "not found!")
-        return
-    } 
+    placementDOMs.forEach((placementDOM,i) => {
+        const targetElement = document.createElement("p");
+        targetElement.textContent = txt[i];
+
+        //TEMP: Use same styling
+        placementDOM.classList.forEach(
+            className => targetElement.classList.add(className)
+        );
     
-    const targetElement = document.createElement("p");
-    targetElement.textContent = txt;
+        placementDOM.insertAdjacentElement("afterend", targetElement);
+    });
+
+
+    // // Guard-Clause if DOM is not found
+    // if (!placement_DOM){
+    //     console.error("DOM ",selector, "not found!")
+    //     return
+    // } 
     
-    //TEMP: Use same styling
-    placement_DOM.classList.forEach(
-        className => targetElement.classList.add(className)
-    );
+    // const targetElement = document.createElement("p");
+    // targetElement.textContent = txt;
     
-    placement_DOM.insertAdjacentElement("afterend", targetElement);
+    // //TEMP: Use same styling
+    // placement_DOM.classList.forEach(
+    //     className => targetElement.classList.add(className)
+    // );
+    
+    // placement_DOM.insertAdjacentElement("afterend", targetElement);
 }
 
 
 function onDataFetch(data) {
     
-    if (data['error'] != "") {
-        //TODO: Display some error warnings somewhere for the extension
-        console.error("Error in fetched data: ", data['error'])
-        return
+    for (const css in data['img_txt']) {
+        insert_data(css, data['img_txt'][css].map(score => `Image-Caption Similarity: ${score.toFixed(2)}`))
     }
-            
-    insert_data(selector="#article-head > div > span",
-                txt=`Image-Caption Similarity: ${data['data']['img_txt'][0]}`)
+
 }
 
 
@@ -39,8 +48,13 @@ let data;
 fetch(`http://127.0.0.1:8000/?url=${window.location.href}`)
     .then(res => res.json())
     .then(data => {
-        console.log(data)
-        onDataFetch(data)
+        if (data['error'] != "") {
+            //TODO: Display some error warnings somewhere for the extension
+            console.error("Error in fetched data: ", data['error'])
+        } else {
+            console.log(data['data'])
+            onDataFetch(data['data'])
+        }
     })
     .catch(error => {
         console.error('Error fetching data:', error);

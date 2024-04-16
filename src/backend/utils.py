@@ -35,6 +35,9 @@ class Payload():
     def to_dict(self) -> dict:
         return {"data":self.data,"error":self.error}
     
+    def print(self) -> None:
+        print(json.dumps(self.to_dict(), indent=1))
+    
     
 class GPU_Payload(Payload):
     def __init__(self,job_no:int,payload:Payload):

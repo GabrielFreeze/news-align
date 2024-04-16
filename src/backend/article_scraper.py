@@ -3,25 +3,19 @@ import json
 import requests
 import traceback
 from lxml import html
+from cssify import cssify
 from base64 import b64encode
-from selenium import webdriver
 from lxml.html import HtmlElement
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 from utils import color, get_img_ext, Payload
 
 class ArticleScraper:
     def __init__(self):
         self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
         
-        #Initialise Selenium webdriver in cases were JS is required to fully load page.
-        self.chrome_options = Options()
-        self.chrome_options.add_argument("--headless")
-        self.chrome_options.add_argument("--log-level=3")
-        
     def scrape(self, url:str) -> Payload:
         scraper_map = {"timesofmalta":self.scrape_tom,
-                       "theshiftnews":self.scrape_ts}
+                       "theshiftnews":self.scrape_ts,
+                       "maltatoday"  :self.scrape_mt}
         match = re.search(r"(?:https?:\/\/)(?:www\.)?([a-zA-Z0-9-]+)\.com", url)
 
         #Ensure that the provided website is valid
@@ -46,12 +40,9 @@ class ArticleScraper:
 
             #Get Title
             title = tree.xpath('/html/head/title')[0].text
-            script = json.loads(tree.xpath('//*[@id="article-ld"]')[0].text)
+            script = json.loads(tree.xpath('//*[@id="article-ld"]')[0].text)            
             
-            # print(json.dumps(script['@graph'][0]['image'],indent=1))
-            
-            
-            #There existsw multiple versions of a given image.
+            #There exists multiple versions of a given image.
             #Get all images with the same caption as the first image (the thumbnail)
             all_imgs = script['@graph'][0]['image']
             all_imgs = [img for img in all_imgs
@@ -61,32 +52,20 @@ class ArticleScraper:
             thumbnail = sorted(all_imgs,key=lambda img: img['height']*img['width'],
                                reverse=True)[0]
             
-            thumbnail_bytes = {"img": {"data":b64encode(requests.get(thumbnail['@id']).content).decode("ascii"),
-                                       "file":get_img_ext(k)},
-                               "alt": thumbnail['caption']}
+            #Save byte data of thumbnail
+            thumbnail_bytes = {"data":b64encode(requests.get(thumbnail['@id']).content).decode("ascii"),
+                               "file":get_img_ext(k),
+                               "alt": thumbnail['caption'],
+                               "css-selector":'article-head > div > span'}
             
-            print(thumbnail['caption'])
-            
-            imgs = tree.xpath(f'//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]')
-
-            #Save byte data of images to list
-            imgs_bytes = [{"img": {"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
-                                   "file":get_img_ext(k)},
-                           "alt": img.get_attribute('alt')}
+            #Save byte data of images
+            xpath = '//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]'
+            imgs = tree.xpath(xpath)
+            imgs_bytes = [{"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
+                           "alt": img.get_attribute('alt'),
+                           "css-selector": cssify(xpath)}
                           for img in imgs]
-            
-            #Get links to Thumbnail + Images
-            # self.driver = webdriver.Chrome(options=self.chrome_options)
-            # self.driver.get(url) #ToM websites are rendered using JavaScript so we have to use Selenium.
-            # img_links = self.driver.find_elements(By.XPATH,'//*[@id="article-head"]/div/picture/img') + \
-            #             self.driver.find_elements(By.XPATH,'//*[@id="observer"]/main/article/div[2]/div/*/img')
-            
-            # #Save byte data of images to list
-            # imgs = [{"img": {"data":b64encode(requests.get(k:=img.get_attribute('src')).content).decode("ascii"),
-            #                  "file":get_img_ext(k)},
-            #          "alt": img.get_attribute('alt')}
-            #         for img in img_links]
-                    
+                                
             #Get Body
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
 
@@ -94,6 +73,7 @@ class ArticleScraper:
             traceback.print_exc()
             return Payload(error=f"Unexpected Error: {traceback.format_exc()}")
 
+                                # Join thumbnail and image data    vvv
         return Payload(data={"title":title, "imgs":[thumbnail_bytes]+imgs_bytes, "body" :body})
 
     def scrape_ts(self,url:str):
@@ -117,16 +97,20 @@ class ArticleScraper:
 
             #Get Body
             body = ' '.join([b.text for b in tree.xpath('//*[@id="container"]/div[4]/p') if type(b.text) == str])
-
-            #Get Images + Captions
-            img_links = tree.xpath('//*[@class="featured_image"]')[:1] + \
-                        tree.xpath('//*[@class="wp-caption alignnone"]')
+            
+            
+            #Get Images, Captions, and CSS Selector
+            img_tags = [(tree.xpath(k:=f'//*[@class="featured_image"]/img')[0],
+                         cssify(k))] + \
+                       [(img_tag,
+                         cssify('//*[@class="wp-caption alignnone"]/img'))
+                        for img_tag in tree.xpath(f'//*[@class="wp-caption alignnone"]/img')]
 
             #Save byte data of images to list
-            imgs = [{"img": {"data":b64encode(requests.get(k:=img.xpath('./img')[0].attrib['src']).content),
-                             "file":get_img_ext(k)},
-                    "alt": img.xpath('./p')[0].text}
-                    for img in img_links]
+            imgs = [{"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
+                     "alt": img.xpath('./p')[0].text,
+                     "css-selector": css}
+                    for img,css in img_tags]
         
         except Exception as e:
             traceback.print_exc()
@@ -134,8 +118,48 @@ class ArticleScraper:
         
         return Payload(data={"title":title, "imgs":imgs, "body" :body})
 
+    def scrape_mt(self,url:str):
+        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com\.mt\/news\/national\/[0-9]{6}\/",url):
+            return Payload(error=f"URL is not a valid MaltaToday article")
+        
+        try:
+            content = requests.get(url,headers=self.headers).content.decode('utf-8')
+            
+            with open("test.html","w", encoding="utf-8") as f:
+                f.write(content)
+            
+            tree = html.fromstring(content)
+
+            # title = tree.xpath('//*[@id="content"]/section/div/div[1]/div/div/div[2]/div/div/div/h1')[0].text
+            title = tree.cssselect('.article-heading > div:nth-child(1) > div:nth-child(1) > h1:nth-child(1)')[0].text
+            
+            #Get Body
+            # body = self.get_nested_text(tree.xpath('/html/body/div[1]/section/div/div[2]/div[2]/div/div[1]/div[1]/div')[0])            
+            body = self.get_nested_text(tree.cssselect('.content')[0])            
+            
+            #Get Images,Captions, and XPATH
+            img_tags = []
+            for class_name in ["media-item show ", "media-item show", "media-item"]:
+                for i,img_tag in enumerate(tree.cssselect(k:=f'.{class_name} img')):
+                    img_tags.append((img_tag, f'{k}'))
+
+                
+            #Save byte data of images to list
+            imgs = [{"data":b64encode(requests.get(k:=("https:"+img.attrib['src'])).content).decode("ascii"),
+                     "alt": img.attrib['alt'],
+                     "css-selector": css}
+                    for img,css in img_tags]
+        
+        except Exception as e:
+            traceback.print_exc()
+            return Payload(f"Unexpected Error: {traceback.format_exc()}")
+        
+        return Payload(data={"title":title, "imgs":imgs, "body" :body})
+    
+    
     def get_nested_text(self,element:HtmlElement): 
         return "".join([(child.text or "") + self.get_nested_text(child) + (child.tail or "")
                         for child in element.iterchildren()
                         if child.tag in ['p','strong','i','b','u','em','a']])
-       
+        
+    
