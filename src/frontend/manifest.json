@@ -14,7 +14,7 @@
           "js": ["scripts/content.js"],
           "matches": [
             "https://timesofmalta.com/article/*",
-            "https://theshiftnews.com/*",
+            "https://theshiftnews.com/*/*/*/*",
             "https://www.maltatoday.com.mt/news/national/*"
           ]
         }

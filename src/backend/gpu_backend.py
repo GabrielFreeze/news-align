@@ -93,6 +93,9 @@ class GPU_Backend():
             data        = payload.data
             this_job_no = payload.job_no
             
+            
+            print(data['imgs'][1]['alt'])
+            
             #Decode Images
             for i,img in enumerate(data['imgs']):
                 data['imgs'][i]['data'] = Image.open(BytesIO(b64decode(img['data']))).convert("RGB")

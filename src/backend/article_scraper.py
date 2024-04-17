@@ -53,7 +53,7 @@ class ArticleScraper:
                                reverse=True)[0]
             
             #Save byte data of thumbnail
-            thumbnail_bytes = {"data":b64encode(requests.get(thumbnail['@id']).content).decode("ascii"),
+            thumbnail_bytes = {"data":self.url_to_bytestring(thumbnail['@id']),
                                "file":get_img_ext(k),
                                "alt": thumbnail['caption'],
                                "css-selector":'article-head > div > span'}
@@ -90,26 +90,25 @@ class ArticleScraper:
             tree = html.fromstring(content)
             
             #Skip Maltese Articles
-            if tree.xpath('//*[@id="container"]/div[4]/p[1]/em'):
+            if tree.cssselect('.content > p:nth-child(1) > i:nth-child(1) > a:nth-child(1)'):
                 return {}
 
-            title = tree.xpath('//*[@id="container"]/h2')[0].text
+            title = tree.cssselect('.title')[0].text
 
             #Get Body
-            body = ' '.join([b.text for b in tree.xpath('//*[@id="container"]/div[4]/p') if type(b.text) == str])
-            
+            body = self.get_nested_text(tree.cssselect('.content')[0])
+            body = body.replace("Aqra dan l-artiklu bil-Malti.",'')
             
             #Get Images, Captions, and CSS Selector
-            img_tags = [(tree.xpath(k:=f'//*[@class="featured_image"]/img')[0],
-                         cssify(k))] + \
-                       [(img_tag,
-                         cssify('//*[@class="wp-caption alignnone"]/img'))
-                        for img_tag in tree.xpath(f'//*[@class="wp-caption alignnone"]/img')]
+            img_tags = [(tree.cssselect('.featured_posts')[0], '.featured_posts')] + \
+                       [(img_tag, 'wp-caption') for img_tag in tree.cssselect('div.wp-caption')]
 
+            print(img_tags)
+            
             #Save byte data of images to list
-            imgs = [{"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
-                     "alt": img.xpath('./p')[0].text,
-                     "css-selector": css}
+            imgs = [{"data": self.url_to_bytestring(img.cssselect('img')[0].attrib['src']),
+                     "alt" : img.cssselect('p')[0].text,
+                     "css-selector": f'{css} img'}
                     for img,css in img_tags]
         
         except Exception as e:
@@ -137,7 +136,7 @@ class ArticleScraper:
             # body = self.get_nested_text(tree.xpath('/html/body/div[1]/section/div/div[2]/div[2]/div/div[1]/div[1]/div')[0])            
             body = self.get_nested_text(tree.cssselect('.content')[0])            
             
-            #Get Images,Captions, and XPATH
+            #Get Images,Captions, and CSS Selector
             img_tags = []
             for class_name in ["media-item show ", "media-item show", "media-item"]:
                 for i,img_tag in enumerate(tree.cssselect(k:=f'.{class_name} img')):
@@ -145,7 +144,7 @@ class ArticleScraper:
 
                 
             #Save byte data of images to list
-            imgs = [{"data":b64encode(requests.get(k:=("https:"+img.attrib['src'])).content).decode("ascii"),
+            imgs = [{"data":self.url_to_bytestring("https:"+img.attrib['src']),
                      "alt": img.attrib['alt'],
                      "css-selector": css}
                     for img,css in img_tags]
@@ -158,8 +157,9 @@ class ArticleScraper:
     
     
     def get_nested_text(self,element:HtmlElement): 
-        return "".join([(child.text or "") + self.get_nested_text(child) + (child.tail or "")
+        return " ".join([(child.text or "") + self.get_nested_text(child) + (child.tail or "")
                         for child in element.iterchildren()
                         if child.tag in ['p','strong','i','b','u','em','a']])
         
-    
+    def url_to_bytestring(self,url:str):
+        return b64encode(requests.get(url).content).decode("ascii")

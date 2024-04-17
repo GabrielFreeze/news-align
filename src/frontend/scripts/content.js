@@ -36,6 +36,7 @@ function insert_data(selector, txt) {
 function onDataFetch(data) {
     
     for (const css in data['img_txt']) {
+        console.log(css)
         insert_data(css, data['img_txt'][css].map(score => `Image-Caption Similarity: ${score.toFixed(2)}`))
     }
 
