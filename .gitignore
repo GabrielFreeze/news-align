@@ -7,5 +7,6 @@
 !src/backend/article_scraper.py
 
 !src/frontend/images/*
+!src/frontend/elements/*/*
 !src/frontend/scripts/*
 !LICENSE

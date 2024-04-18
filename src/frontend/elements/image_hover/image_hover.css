@@ -1,0 +1,7 @@
+h3.image-caption-score {
+    display: none;
+}
+    
+this_image_css_selector:hover + h3.image-caption-score {
+    display: block;
+}

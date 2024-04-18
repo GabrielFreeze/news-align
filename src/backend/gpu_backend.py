@@ -26,11 +26,9 @@ class GPU_Backend():
                                                                     is_eval=True, device=self.device)     
            
           
-    def _img_text_matching(self,imgs) -> Union[List[dict],dict]:
+    def _img_text_matching(self,imgs:Union[List[dict],dict]) -> List[dict]:
         
-        is_list = type(imgs) is list
-        
-        if not is_list:
+        if not type(imgs) is list:
             imgs = [imgs]
         
         result:List[dict] = [{}]*len(imgs)
@@ -55,25 +53,7 @@ class GPU_Backend():
             
             result[i] = element
             
-        return result if is_list else result[0]
-        
-        
-                
-        # #Perform Image-Text Matching for every pair
-        # result = [{"score":softmax(self.itm_model({
-        #                       "image": self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device),
-        #                       "text_input" : img['alt']
-        #                       },match_head="itm"),
-        #               dim=1)[:,1].item(),
-                   
-        #           "css-selector":img['css-selector']}
-                    
-        #           if img['alt'] else -1
-        #           for img in imgs]
-        
-        # return result if is_list else result[0]
-        
-
+        return result
         
        
     def _get_gencap(self, imgs:List[Image.Image]) ->  List[str]:
@@ -93,9 +73,7 @@ class GPU_Backend():
             data        = payload.data
             this_job_no = payload.job_no
             
-            
-            print(data['imgs'][1]['alt'])
-            
+                        
             #Decode Images
             for i,img in enumerate(data['imgs']):
                 data['imgs'][i]['data'] = Image.open(BytesIO(b64decode(img['data']))).convert("RGB")

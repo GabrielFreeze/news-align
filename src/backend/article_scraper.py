@@ -54,17 +54,20 @@ class ArticleScraper:
             
             #Save byte data of thumbnail
             thumbnail_bytes = {"data":self.url_to_bytestring(thumbnail['@id']),
-                               "file":get_img_ext(k),
                                "alt": thumbnail['caption'],
-                               "css-selector":'article-head > div > span'}
+                               "css-selector":'.ar-ArticleHeader-Standard_sub > picture > img'}
             
             #Save byte data of images
-            xpath = '//img[@class="wi-WidgetSubCompType_13-img wi-WidgetImage loaded"]'
-            imgs = tree.xpath(xpath)
-            imgs_bytes = [{"data":b64encode(requests.get(k:=img.attrib['src']).content).decode("ascii"),
-                           "alt": img.get_attribute('alt'),
-                           "css-selector": cssify(xpath)}
-                          for img in imgs]
+            imgs_bytes = [{"data":self.url_to_bytestring(img.attrib['src']),
+                           "alt": img.attrib['alt'],
+                           "css-selector": ".image img"}
+                          for img in tree.cssselect('.image img')]
+            
+            #Save byte data of slider images
+            slider_bytes = [{"data":self.url_to_bytestring(img.cssselect('img')[0].attrib['src']),
+                             "alt": img.cssselect('.caption-text')[0].text,
+                             "css-selector": ".swiper-slide img"}
+                            for img in tree.cssselect('.swiper-slide')]
                                 
             #Get Body
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
@@ -74,7 +77,7 @@ class ArticleScraper:
             return Payload(error=f"Unexpected Error: {traceback.format_exc()}")
 
                                 # Join thumbnail and image data    vvv
-        return Payload(data={"title":title, "imgs":[thumbnail_bytes]+imgs_bytes, "body" :body})
+        return Payload(data={"title":title, "imgs":[thumbnail_bytes]+imgs_bytes+slider_bytes, "body" :body})
 
     def scrape_ts(self,url:str):
         
@@ -101,7 +104,7 @@ class ArticleScraper:
             
             #Get Images, Captions, and CSS Selector
             img_tags = [(tree.cssselect('.featured_posts')[0], '.featured_posts')] + \
-                       [(img_tag, 'wp-caption') for img_tag in tree.cssselect('div.wp-caption')]
+                       [(img_tag, '.wp-caption') for img_tag in tree.cssselect('div.wp-caption')]
 
             print(img_tags)
             

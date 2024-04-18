@@ -17,15 +17,12 @@ app.add_middleware(
     allow_credentials=True,
 )
 
-
 artScraper = ArticleScraper()
 init:bool = False
 job_no:int = 0
 
 queue_1: multiprocessing.Queue = None
-queue_2: multiprocessing.Queue = None
-        
-
+queue_2: multiprocessing.Queue = None       
 
 @app.get("/")
 def _endpoint(url:str="") -> dict:
@@ -72,6 +69,7 @@ def _endpoint(url:str="") -> dict:
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume    
             
         #Group the scores by css selector.
+        #TODO: I SHOULD JUST ADD `nth_of_type(i)` IN ORDER TO DISTINGUISH BETWEEN IMGS BELONGING TO THE SAME SELECTOR, INSTEAD OF DOING A SELECTALL AND RELYING ON ORDER
         grouped = {}
         for img_txt in return_payload.data['img_txt']:
             css = img_txt['css-selector']
@@ -83,9 +81,6 @@ def _endpoint(url:str="") -> dict:
         
         
         return_payload.data['img_txt'] = grouped
-        
-        
-        
         
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
         
