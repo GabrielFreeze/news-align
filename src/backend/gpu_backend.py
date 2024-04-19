@@ -1,11 +1,9 @@
-import os
-import sys
 import torch
 import traceback
-import pandas as pd
 from time import time
 from PIL import Image
 from io import BytesIO
+from hashlib import md5
 from base64 import b64decode
 from utils import color, Payload,GPU_Payload
 from typing import Union, List, Tuple
@@ -49,19 +47,23 @@ class GPU_Backend():
             score = softmax(score,dim=1)[:,1].item()
             
             element['score'] = score
-            element['css-selector'] = img['css-selector']
+            element['gen_txt'] = self._get_gencap(img['data'])
             
+            element['css-selector'] = f"{img['css-selector']}:nth-of-type({i+1})"
+            element['id'] = md5(element['css-selector'].encode()).hexdigest()
+            
+            #Add element to result
             result[i] = element
             
         return result
         
        
-    def _get_gencap(self, imgs:List[Image.Image]) ->  List[str]:
+    def _get_gencap(self, img:Image.Image, max_length:int=70) ->  str:
         
         #Perform image-to-text on every image
-        return [self.i2t_model.generate({"image": self.i2t_vis["eval"](img).unsqueeze(0).to(self.device)},
-            max_length=50)
-                for img in imgs]
+        return self.i2t_model.generate({"image": self.i2t_vis["eval"](img).unsqueeze(0).to(self.device)},
+                                       max_length=max_length)
+
         
     def __call__(self,payload:GPU_Payload) -> GPU_Payload:
         s=time()
@@ -97,21 +99,14 @@ class GPU_Backend():
                 data['imgs']
             )
             
-            print(f'[{this_job_no}] ITM Processed: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
+            print(f'[{this_job_no}] Images Processed: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
             s=time()
             
-            gen_txt = self._get_gencap(
-                [img['data'] for img in data['imgs']]
-            )
- 
-            
-            print(f'[{this_job_no}] I2T Processed: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
-            
+             
             #Format data              
             data = {"front_title"  : front_title,
                     "front_body"   : front_body ,
-                    "img_txt"      : img_txt    ,
-                    "gen_txt"      : gen_txt    }
+                    "img_txt"      : img_txt    }
                         
         except Exception as e:
             traceback.print_exc()

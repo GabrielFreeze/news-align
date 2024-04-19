@@ -1,69 +1,59 @@
 
-function setEventListeners(dict) {
+
+
+// function setEventListeners(dict) {
     
-    for (const selector in dict) {
-        if (dict.hasOwnProperty.call(dict, selector)) {
-            dict[selector].forEach((i,score) => { //Display/Hide score on selector hover
-                document.querySelector(selector).addEventListener('mouseenter', () => displayScore(selector,score,i));
-                document.querySelector(selector).addEventListener('mouseleave', () => hideScore   (selector,score,i));             
-            });
-        }
-    }
-}
-
-function displayScore(selector,score,i) {
-    console.log(`Entered ${selector} at position ${i}`)
-    // Load HTML file
-    fetch(chrome.runtime.getURL('../elements/image_hover/image_hover.html'))
-        .then(response => response.text())
-        .then(html => {
+    //     for (const selector in dict) {
+        //         if (dict.hasOwnProperty.call(dict, selector)) {
+            //             dict[selector].forEach((i,score) => { //Display/Hide score on selector hover
+            //                 document.querySelector(selector).addEventListener('mouseenter', () => displayScore(selector,score,i));
+            //                 document.querySelector(selector).addEventListener('mouseleave', () => hideScore   (selector,score,i));             
+            //             });
+            //         }
+            //     }
+            // }
             
-            //Get DOM and place target element
-            if (placementDOM = document.querySelectorAll(selector)[i]){
-                placementDOM.appendChild(targetElement);
+            
+            
+            
+            // function hideScore(selector,i) {
+                //     if (customElement = document.querySelectorAll(`${selector} .image-caption-score`)[i])
+                //         customElement.remove();
+                // }
                 
-                //Create element to place
-                var container = document.createElement('div');
-                container.innerHTML = html;//  Add the score the element   vv
-                container.querySelector('.image-caption-score').textContent = `Image Caption Similarity: ${score}`
-                targetElement = container.firstChild
                 
-                //Add the target element's custom CSS to document head
-                fetch(chrome.runtime.getURL('../elements/image_hover/image_hover.css'))
-                    .then(response => response.text())
-                    .then(css => {
-                            
-                            //TODO: MAKE THE CSS APPENED TO THE HEAD BE FOR ALL POSSIBLE IMAGE TAGS.
-                            //TODO: REFER TO OTHER TODO IN MAIN.PY
+                
+//TODO: CSS selector is not working for images that are not thumbnail
+//TODO: ToM bug where every hover repeats sript size causing bloat,
 
-                            css = css.replace("this_image_css_selector",`${selector}:nth-of-type(${i+1})`)
-
-                            var link = document.createElement('link');
-                            link.rel = 'stylesheet';
-                            link.type = 'text/css';
-                            link.href = css;
-                            document.head.appendChild(link);
-                        })
-            }
-        }
-    );
-
-   
+function getImageCSS(selector,id) {
+    return `${selector}:hover + h3.image-caption-score#${id} {display: block;}`
 }
-
-function hideScore(selector,i) {
-    if (customElement = document.querySelectorAll(`${selector} .image-caption-score`)[i])
-        customElement.remove();
+function getImageHTML(score,id) {
+    return `<h3 class="image-caption-score" id="${id}">Image Caption Similarity: ${score}</h3>`
 }
-
-
-
-
-
 //Code to execute upon a successful API return
 function onDataFetch(data) {    
-    //Setup EventListeners to display/hide score on image hover.
-    setEventListeners(data['img_txt'])
+    
+    var styleElement = document.createElement('style');
+
+    //Setup Global CSS rules
+    styleElement.textContent += "h3.image-caption-score {display: none;color:black}\n"
+
+    //Setup CSS rules to display/hide score on image hover
+    styleElement.textContent += data['img_txt'].map(
+        element => getImageCSS(element['css-selector'],element['id'])
+    ).join("\n");
+    
+    console.log(styleElement)
+    document.head.appendChild(styleElement);
+
+    //Setup HTML Score Container for every image.
+    data['img_txt'].forEach(element => {
+        if (placementDOM = document.querySelector(element['css-selector'])) {
+            placementDOM.insertAdjacentHTML('afterend',getImageHTML(element['score'], element['id']));
+        }
+    });
 }
 
 
@@ -78,10 +68,13 @@ fetch(`http://127.0.0.1:8000/?url=${window.location.href}`)
         if (data['error'] != "") {
             throw new Error(`Error while processing data: ${data['error']}`)
         } 
-
+        console.log(data['data'])
         onDataFetch(data['data'])
         
     })
     .catch(error => {
         console.error('Error fetching data:', error);
     });
+
+
+

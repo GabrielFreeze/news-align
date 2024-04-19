@@ -20,7 +20,7 @@
     "content_scripts": [
         {
           "js": ["scripts/content.js"],
-          "matches": ["https://www.timesofmalta.com/article/*",
+          "matches": ["https://timesofmalta.com/article/*",
                       "https://theshiftnews.com/*/*/*/*",
                       "https://www.maltatoday.com.mt/news/national/*"]
         }

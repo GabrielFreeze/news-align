@@ -67,20 +67,11 @@ def _endpoint(url:str="") -> dict:
         while (return_payload:=queue_2.get()).job_no != this_job_no and not return_payload.error:
             print(return_payload.error)
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume    
-            
-        #Group the scores by css selector.
-        #TODO: I SHOULD JUST ADD `nth_of_type(i)` IN ORDER TO DISTINGUISH BETWEEN IMGS BELONGING TO THE SAME SELECTOR, INSTEAD OF DOING A SELECTALL AND RELYING ON ORDER
-        grouped = {}
-        for img_txt in return_payload.data['img_txt']:
-            css = img_txt['css-selector']
-            
-            if css not in grouped:
-                grouped[css] = []
-                
-            grouped[css].append(img_txt['score'])
         
         
-        return_payload.data['img_txt'] = grouped
+        #Assign a unique_id to each AI generated value
+        
+        
         
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
         
