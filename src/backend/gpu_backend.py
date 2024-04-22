@@ -35,21 +35,30 @@ class GPU_Backend():
             
             element = {}
             
-            #Guard clause against images with no captions
-            if not img['alt']:
+            #Guard clause against invalid images or no captions
+            if not img['alt'] or not img['data']:
                 result[i] = -1
                 continue
             
-            img_data = self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device)
-            img_txt  = img['alt']
+            if img['data']: #Image Data
+        
+                if img['alt']: #Image Data and Image Alt
+                    img_txt  = img['alt']
+                    img_data = self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device)
+                    score = self.itm_model({"image":img_data, "text_input": img_txt}, match_head="itm")
+                    score = softmax(score,dim=1)[:,1].item()
+                    element['score'] = score
+                
+                else: #Image Data but no Image Alt
+                    element['score'] = -1
             
-            score = self.itm_model({"image":img_data, "text_input": img_txt}, match_head="itm")
-            score = softmax(score,dim=1)[:,1].item()
+                element['gen_txt'] = self._get_gencap(img['data'])      
+                
+            else: #No Image Data
+                element['gen_txt'] = ""
             
-            element['score'] = score
-            element['gen_txt'] = self._get_gencap(img['data'])
-            
-            element['css-selector'] = f"{img['css-selector']}:nth-of-type({i+1})"
+            element['css-selector']    = img['css-selector']
+            element['parent-selector'] = img['parent-selector']
             element['id'] = md5(element['css-selector'].encode()).hexdigest()
             
             #Add element to result
@@ -74,24 +83,27 @@ class GPU_Backend():
         try:    
             data        = payload.data
             this_job_no = payload.job_no
-            
                         
             #Decode Images
             for i,img in enumerate(data['imgs']):
-                data['imgs'][i]['data'] = Image.open(BytesIO(b64decode(img['data']))).convert("RGB")
+                try:     img_data = Image.open(BytesIO(b64decode(img['data']))).convert("RGB")
+                except:  img_data = None
+                finally: data['imgs'][i]['data'] = img_data
                 
             #Compute for front image and title
             front_title = self._img_text_matching(
                 {"data":data['imgs'][0]['data'],
                  "alt":data['title'],
-                 "css-selector":data['imgs'][0]['css-selector']}
+                 "css-selector":data['imgs'][0]['css-selector'],
+                 "parent-selector":data['imgs'][0]['parent-selector']}
             )
             
             # Compute for front image and title
             front_body = self._img_text_matching(
                 {"data":data['imgs'][0]['data'],
                  "alt":data['body'],
-                 "css-selector":data['imgs'][0]['css-selector']},
+                 "css-selector":data['imgs'][0]['css-selector'],
+                 "parent-selector":data['imgs'][0]['parent-selector']}
             )
             
             #Compute for all img_txt pairs

@@ -52,7 +52,8 @@ def _endpoint(url:str="") -> dict:
         s=time()
         payload:Payload = artScraper.scrape(url)
         print(f'[{this_job_no}] Scraping finished: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
-            
+        
+        
         #Don't invoke job if error in scraping
         if payload.error:
             return payload.to_dict()
@@ -67,12 +68,8 @@ def _endpoint(url:str="") -> dict:
         while (return_payload:=queue_2.get()).job_no != this_job_no and not return_payload.error:
             print(return_payload.error)
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume    
-        
-        
-        #Assign a unique_id to each AI generated value
-        
-        
-        
+      
+                
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
         
         return return_payload.to_dict()

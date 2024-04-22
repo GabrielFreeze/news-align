@@ -37,8 +37,7 @@ class Payload():
     
     def print(self) -> None:
         print(json.dumps(self.to_dict(), indent=1))
-    
-    
+      
 class GPU_Payload(Payload):
     def __init__(self,job_no:int,payload:Payload):
         super().__init__(error=payload.error,

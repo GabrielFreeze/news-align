@@ -1,12 +1,15 @@
+#TO FIX: the -1 thing is not returning as dict and as a result thew payload is just -1 and not the score=-1, which hence cant be displayed
+#Just switch hover to JS bro. You tried, its just not worth it
+
 import re
 import json
 import requests
 import traceback
+from time import time
 from lxml import html
-from cssify import cssify
 from base64 import b64encode
+from utils import Payload
 from lxml.html import HtmlElement
-from utils import color, get_img_ext, Payload
 
 class ArticleScraper:
     def __init__(self):
@@ -32,10 +35,6 @@ class ArticleScraper:
         try:
             #Get article
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
-
-            with open('test.html','w',encoding='utf-8') as f:
-                f.write(content)
-            
             tree = html.fromstring(content)          
 
             #Get Title
@@ -55,19 +54,22 @@ class ArticleScraper:
             #Save byte data of thumbnail
             thumbnail_bytes = {"data":self.url_to_bytestring(thumbnail['@id']),
                                "alt": thumbnail['caption'],
-                               "css-selector":'.ar-ArticleHeader-Standard_sub > picture > img'}
+                               "css-selector":'.ar-ArticleHeader-Standard_sub > picture > img',
+                               "parent-selector":'.ar-ArticleHeader-Standard_sub > picture'}
             
             #Save byte data of images
             imgs_bytes = [{"data":self.url_to_bytestring(img.attrib['src']),
                            "alt": img.attrib['alt'],
-                           "css-selector": ".image img"}
-                          for img in tree.cssselect('.image img')]
+                           "css-selector":    f"div.image:nth-of-type({i+1}) img",
+                           "parent-selector": f"div.image:nth-of-type({i+1})"}
+                          for i,img in enumerate(tree.cssselect('.image img'))]
             
             #Save byte data of slider images
             slider_bytes = [{"data":self.url_to_bytestring(img.cssselect('img')[0].attrib['src']),
                              "alt": img.cssselect('.caption-text')[0].text,
-                             "css-selector": ".swiper-slide img"}
-                            for img in tree.cssselect('.swiper-slide')]
+                             "css-selector":    f"div.swiper-slide:nth-of-type({i+1}) img",
+                             "parent-selector": f"div.swiper-slide:nth-of-type({i+1})"}
+                            for i,img in enumerate(tree.cssselect('.swiper-slide'))]
                                 
             #Get Body
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
@@ -86,10 +88,6 @@ class ArticleScraper:
         
         try:
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
-            
-            with open("test.html","w", encoding="utf-8") as f:
-                f.write(content)
-            
             tree = html.fromstring(content)
             
             #Skip Maltese Articles
@@ -99,20 +97,31 @@ class ArticleScraper:
             title = tree.cssselect('.title')[0].text
 
             #Get Body
-            body = self.get_nested_text(tree.cssselect('.content')[0])
+            body = self.get_nested_text(tree.cssselect('div.content')[0], theshift=True)
             body = body.replace("Aqra dan l-artiklu bil-Malti.",'')
             
+                                   
             #Get Images, Captions, and CSS Selector
-            img_tags = [(tree.cssselect('.featured_posts')[0], '.featured_posts')] + \
-                       [(img_tag, '.wp-caption') for img_tag in tree.cssselect('div.wp-caption')]
-
-            print(img_tags)
+            thumbnail_css = 'div.featured_posts'
+            thumbnail = tree.cssselect(thumbnail_css)[0]
+            
+            imgs = [{ #Save byte data of thumbnail
+                "data": self.url_to_bytestring(thumbnail.cssselect('img')[0].attrib['src']),
+                "alt" : thumbnail.cssselect('p')[0].text,
+                "css-selector":    f'{thumbnail_css}:nth-of-type({1}) img',
+                "parent-selector": f'{thumbnail_css}:nth-of-type({1})'
+            }]
+            
             
             #Save byte data of images to list
-            imgs = [{"data": self.url_to_bytestring(img.cssselect('img')[0].attrib['src']),
-                     "alt" : img.cssselect('p')[0].text,
-                     "css-selector": f'{css} img'}
-                    for img,css in img_tags]
+            for i,img in enumerate(tree.cssselect(css:='div.wp-caption')):
+                imgs.append({
+                    "data": self.url_to_bytestring(img.cssselect('img')[0].attrib['src']),
+                    "alt" : img.cssselect('p')[0].text,
+                    "css-selector":    f'{css}:nth-of-type({i+1}) img',
+                    "parent-selector": f'{css}:nth-of-type({i+1})'
+                })
+            
         
         except Exception as e:
             traceback.print_exc()
@@ -121,7 +130,7 @@ class ArticleScraper:
         return Payload(data={"title":title, "imgs":imgs, "body" :body})
 
     def scrape_mt(self,url:str):
-        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com\.mt\/news\/national\/[0-9]{6}\/",url):
+        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com\.mt\/(news|environment)\/[a-zA-Z0-0-]*\/[0-9]{6}\/",url):
             return Payload(error=f"URL is not a valid MaltaToday article")
         
         try:
@@ -140,17 +149,30 @@ class ArticleScraper:
             body = self.get_nested_text(tree.cssselect('.content')[0])            
             
             #Get Images,Captions, and CSS Selector
-            img_tags = []
-            for class_name in ["media-item show ", "media-item show", "media-item"]:
-                for i,img_tag in enumerate(tree.cssselect(k:=f'.{class_name} img')):
-                    img_tags.append((img_tag, f'{k}'))
-
+            
+            #Save byte data of thumbnail
+            thumbnail_css = 'div[data-module-name="article_cover"] div.cover-photo'
+            thumbnail = tree.cssselect(f'{thumbnail_css}:nth-of-type({1}) img')[0]
+            
+            imgs = [{
+                "data":self.url_to_bytestring("https:"+thumbnail.attrib['src']),
+                "alt": thumbnail.attrib['alt'],
+                "css-selector":    f'{thumbnail_css}:nth-of-type({1}) img',
+                "parent-selector": f'{thumbnail_css}:nth-of-type({1})'
+            }] 
+            
+            css = 'div[data-module-name="full_article"] div.cover-photo'
+            for i,img in enumerate(tree.cssselect(css)):
                 
-            #Save byte data of images to list
-            imgs = [{"data":self.url_to_bytestring("https:"+img.attrib['src']),
-                     "alt": img.attrib['alt'],
-                     "css-selector": css}
-                    for img,css in img_tags]
+                img = img.cssselect(f'img')[0]
+                
+                imgs.append({
+                    "data":self.url_to_bytestring("https:"+img.attrib['src']),
+                    "alt": img.attrib['alt'],
+                    "css-selector":    f'{css}:nth-of-type({i+1}) img',
+                    "parent-selector": f'{css}:nth-of-type({i+1})'
+                })
+
         
         except Exception as e:
             traceback.print_exc()
@@ -159,10 +181,17 @@ class ArticleScraper:
         return Payload(data={"title":title, "imgs":imgs, "body" :body})
     
     
-    def get_nested_text(self,element:HtmlElement): 
-        return " ".join([(child.text or "") + self.get_nested_text(child) + (child.tail or "")
-                        for child in element.iterchildren()
-                        if child.tag in ['p','strong','i','b','u','em','a']])
+    def get_nested_text(self,element:HtmlElement, theshift:bool=False):            
+        
+        return " ".join(
+            [(child.text or "") + self.get_nested_text(child,theshift) + (child.tail or "")
+            for child in element.iterchildren()
+            if child.tag in ['p','strong','i','b','u','em','a','span' if theshift else ""]]
+        )
         
     def url_to_bytestring(self,url:str):
-        return b64encode(requests.get(url).content).decode("ascii")
+        t = time()
+        while len(img_data := requests.get(url).content) <= 146 and time()-t < 5:
+            pass
+
+        return b64encode(img_data).decode("ascii")
