@@ -58,7 +58,6 @@ class GPU_Backend():
                 element['gen_txt'] = ""
             
             element['css-selector']    = img['css-selector']
-            element['parent-selector'] = img['parent-selector']
             element['id'] = md5(element['css-selector'].encode()).hexdigest()
             
             #Add element to result
@@ -94,16 +93,14 @@ class GPU_Backend():
             front_title = self._img_text_matching(
                 {"data":data['imgs'][0]['data'],
                  "alt":data['title'],
-                 "css-selector":data['imgs'][0]['css-selector'],
-                 "parent-selector":data['imgs'][0]['parent-selector']}
+                 "css-selector":data['imgs'][0]['css-selector']}
             )
             
             # Compute for front image and title
             front_body = self._img_text_matching(
                 {"data":data['imgs'][0]['data'],
                  "alt":data['body'],
-                 "css-selector":data['imgs'][0]['css-selector'],
-                 "parent-selector":data['imgs'][0]['parent-selector']}
+                 "css-selector":data['imgs'][0]['css-selector']}
             )
             
             #Compute for all img_txt pairs

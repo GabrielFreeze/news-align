@@ -54,21 +54,18 @@ class ArticleScraper:
             #Save byte data of thumbnail
             thumbnail_bytes = {"data":self.url_to_bytestring(thumbnail['@id']),
                                "alt": thumbnail['caption'],
-                               "css-selector":'.ar-ArticleHeader-Standard_sub > picture > img',
-                               "parent-selector":'.ar-ArticleHeader-Standard_sub > picture'}
+                               "css-selector":'.ar-ArticleHeader-Standard_sub > picture > img'}
             
             #Save byte data of images
             imgs_bytes = [{"data":self.url_to_bytestring(img.attrib['src']),
                            "alt": img.attrib['alt'],
-                           "css-selector":    f"div.image:nth-of-type({i+1}) img",
-                           "parent-selector": f"div.image:nth-of-type({i+1})"}
+                           "css-selector": f"div.image img"}
                           for i,img in enumerate(tree.cssselect('.image img'))]
             
             #Save byte data of slider images
             slider_bytes = [{"data":self.url_to_bytestring(img.cssselect('img')[0].attrib['src']),
                              "alt": img.cssselect('.caption-text')[0].text,
-                             "css-selector":    f"div.swiper-slide:nth-of-type({i+1}) img",
-                             "parent-selector": f"div.swiper-slide:nth-of-type({i+1})"}
+                             "css-selector":    f"div.swiper-slide img"}
                             for i,img in enumerate(tree.cssselect('.swiper-slide'))]
                                 
             #Get Body
@@ -108,8 +105,8 @@ class ArticleScraper:
             imgs = [{ #Save byte data of thumbnail
                 "data": self.url_to_bytestring(thumbnail.cssselect('img')[0].attrib['src']),
                 "alt" : thumbnail.cssselect('p')[0].text,
-                "css-selector":    f'{thumbnail_css}:nth-of-type({1}) img',
-                "parent-selector": f'{thumbnail_css}:nth-of-type({1})'
+                "css-selector":    f'{thumbnail_css} img',
+                "parent-selector": f'{thumbnail_css}'
             }]
             
             
@@ -118,8 +115,7 @@ class ArticleScraper:
                 imgs.append({
                     "data": self.url_to_bytestring(img.cssselect('img')[0].attrib['src']),
                     "alt" : img.cssselect('p')[0].text,
-                    "css-selector":    f'{css}:nth-of-type({i+1}) img',
-                    "parent-selector": f'{css}:nth-of-type({i+1})'
+                    "css-selector": f'{css} img',
                 })
             
         
@@ -152,13 +148,12 @@ class ArticleScraper:
             
             #Save byte data of thumbnail
             thumbnail_css = 'div[data-module-name="article_cover"] div.cover-photo'
-            thumbnail = tree.cssselect(f'{thumbnail_css}:nth-of-type({1}) img')[0]
+            thumbnail = tree.cssselect(f'{thumbnail_css} img')[0]
             
             imgs = [{
                 "data":self.url_to_bytestring("https:"+thumbnail.attrib['src']),
                 "alt": thumbnail.attrib['alt'],
-                "css-selector":    f'{thumbnail_css}:nth-of-type({1}) img',
-                "parent-selector": f'{thumbnail_css}:nth-of-type({1})'
+                "css-selector": f'{thumbnail_css} img',
             }] 
             
             css = 'div[data-module-name="full_article"] div.cover-photo'
@@ -169,8 +164,7 @@ class ArticleScraper:
                 imgs.append({
                     "data":self.url_to_bytestring("https:"+img.attrib['src']),
                     "alt": img.attrib['alt'],
-                    "css-selector":    f'{css}:nth-of-type({i+1}) img',
-                    "parent-selector": f'{css}:nth-of-type({i+1})'
+                    "css-selector": f'{css} img',
                 })
 
         

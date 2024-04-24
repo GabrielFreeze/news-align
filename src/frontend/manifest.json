@@ -9,22 +9,16 @@
       "default_icon": "images/default_icon.png"
     },
 
-    "web_accessible_resources": [
-      {
+    "web_accessible_resources": [{
       "resources": ["elements/image_hover/image_hover.html",
                     "elements/image_hover/image_hover.css"],
-      "matches":   ["<all_urls>"]
-      }
-    ],
+      "matches":   ["<all_urls>"]}],
 
-    "content_scripts": [
-        {
+    "content_scripts": [{
           "js": ["scripts/content.js"],
-          "matches": ["https://timesofmalta.com/article/*",
-                      "https://theshiftnews.com/*/*/*/*",
-                      "https://www.maltatoday.com.mt/news/national/*",
-                      "https://www.maltatoday.com.mt/environment/*/*"]
-        }
-      ]
+          "matches": ["*://timesofmalta.com/article/*",
+                      "*://theshiftnews.com/*/*/*/*",
+                      "*://www.maltatoday.com.mt/news/national/*",
+                      "*://www.maltatoday.com.mt/environment/*/*"]}]
   }
   

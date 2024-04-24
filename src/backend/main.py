@@ -1,6 +1,6 @@
+import os
 import traceback
 from time import time
-from copy import deepcopy
 import multiprocessing
 from fastapi import FastAPI
 from gpu_backend import GPU_Backend
@@ -24,7 +24,7 @@ job_no:int = 0
 queue_1: multiprocessing.Queue = None
 queue_2: multiprocessing.Queue = None       
 
-@app.get("/")
+@app.get(f"/{os.environ['AI_EXT_TOKEN']}/")
 def _endpoint(url:str="") -> dict:
     try:
         global init, job_no, artScraper, queue_1, queue_2
@@ -52,8 +52,7 @@ def _endpoint(url:str="") -> dict:
         s=time()
         payload:Payload = artScraper.scrape(url)
         print(f'[{this_job_no}] Scraping finished: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
-        
-        
+          
         #Don't invoke job if error in scraping
         if payload.error:
             return payload.to_dict()
@@ -69,7 +68,23 @@ def _endpoint(url:str="") -> dict:
             print(return_payload.error)
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume    
       
+        
+        #Group the scores by css selector and update id.
+        grouped = {}
+        for img_txt in return_payload.data['img_txt']:
+            css = img_txt['css-selector']
+            
+            if css not in grouped:
+                grouped[css] = []
                 
+            grouped[css].append({"score":img_txt['score'],
+                                 "id":img_txt['id']})
+        
+        
+        return_payload.data['img_txt'] = grouped
+        
+        
+        
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
         
         return return_payload.to_dict()
