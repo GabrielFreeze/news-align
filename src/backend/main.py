@@ -68,7 +68,7 @@ def _endpoint(url:str="") -> dict:
             print(return_payload.error)
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume    
       
-        
+        print(return_payload.data)
         #Group the scores by css selector and update id.
         grouped = {}
         for img_txt in return_payload.data['img_txt']:

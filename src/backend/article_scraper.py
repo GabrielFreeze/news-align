@@ -1,12 +1,9 @@
-#TO FIX: the -1 thing is not returning as dict and as a result thew payload is just -1 and not the score=-1, which hence cant be displayed
-#Just switch hover to JS bro. You tried, its just not worth it
-
 import re
 import json
 import requests
 import traceback
-from time import time
 from lxml import html
+from time import time,sleep
 from base64 import b64encode
 from utils import Payload
 from lxml.html import HtmlElement
@@ -105,8 +102,7 @@ class ArticleScraper:
             imgs = [{ #Save byte data of thumbnail
                 "data": self.url_to_bytestring(thumbnail.cssselect('img')[0].attrib['src']),
                 "alt" : thumbnail.cssselect('p')[0].text,
-                "css-selector":    f'{thumbnail_css} img',
-                "parent-selector": f'{thumbnail_css}'
+                "css-selector":    f'{thumbnail_css} img'
             }]
             
             
@@ -185,7 +181,8 @@ class ArticleScraper:
         
     def url_to_bytestring(self,url:str):
         t = time()
+        print(url)
         while len(img_data := requests.get(url).content) <= 146 and time()-t < 5:
-            pass
+            sleep(0.3)
 
         return b64encode(img_data).decode("ascii")

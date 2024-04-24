@@ -35,11 +35,6 @@ class GPU_Backend():
             
             element = {}
             
-            #Guard clause against invalid images or no captions
-            if not img['alt'] or not img['data']:
-                result[i] = -1
-                continue
-            
             if img['data']: #Image Data
         
                 if img['alt']: #Image Data and Image Alt
@@ -56,6 +51,7 @@ class GPU_Backend():
                 
             else: #No Image Data
                 element['gen_txt'] = ""
+                element['score'] = ""
             
             element['css-selector']    = img['css-selector']
             element['id'] = md5(element['css-selector'].encode()).hexdigest()
