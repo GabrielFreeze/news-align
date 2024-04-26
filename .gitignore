@@ -1,12 +1,21 @@
+# Add the path to your file followed by ! in order to whitelist it from the .gitifnore file
 *
 !*/
 !.gitignore
+!LICENSE
+
+#Backend
 !src/backend/main.py
 !src/backend/gpu_backend.py
 !src/backend/utils.py
 !src/backend/article_scraper.py
 
+#Frontend
 !src/frontend/images/*
 !src/frontend/elements/*/*
 !src/frontend/scripts/*
-!LICENSE
+
+#Vector_DB
+!src/vector_db/listener.py
+!src/vector_db/indexer.py
+!src/vector_db/utils.py

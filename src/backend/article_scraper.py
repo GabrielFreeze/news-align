@@ -13,9 +13,9 @@ class ArticleScraper:
         self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
         
     def scrape(self, url:str) -> Payload:
-        scraper_map = {"timesofmalta":self.scrape_tom,
-                       "theshiftnews":self.scrape_ts,
-                       "maltatoday"  :self.scrape_mt}
+        scraper_map = {"timesofmalta":self._scrape_tom,
+                       "theshiftnews":self._scrape_ts,
+                       "maltatoday"  :self._scrape_mt}
         match = re.search(r"(?:https?:\/\/)(?:www\.)?([a-zA-Z0-9-]+)\.com", url)
 
         #Ensure that the provided website is valid
@@ -24,7 +24,7 @@ class ArticleScraper:
         else:
             return Payload(error=f"{url} does not belong to the following domain names: {list(scraper_map.keys())}")
         
-    def scrape_tom(self,url:str):        
+    def _scrape_tom(self,url:str):        
         
         if (k:="timesofmalta.com/article/") not in url:
             return Payload(error=f"URL does not include sub-string {k}")
@@ -75,7 +75,7 @@ class ArticleScraper:
                                 # Join thumbnail and image data    vvv
         return Payload(data={"title":title, "imgs":[thumbnail_bytes]+imgs_bytes+slider_bytes, "body" :body})
 
-    def scrape_ts(self,url:str):
+    def _scrape_ts(self,url:str):
         
         if not re.search(r"(?:https?:\/\/)(?:www\.)?theshiftnews\.com\/[0-9]{4}\/[0-9]{2}\/[0-9]{2}\/",url):
             return Payload(error=f"URL is not a valid TheShiftNews article")
@@ -114,27 +114,21 @@ class ArticleScraper:
                     "css-selector": f'{css} img',
                 })
             
-        
         except Exception as e:
             traceback.print_exc()
             return Payload(f"Unexpected Error: {traceback.format_exc()}")
         
         return Payload(data={"title":title, "imgs":imgs, "body" :body})
 
-    def scrape_mt(self,url:str):
-        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com\.mt\/(news|environment)\/[a-zA-Z0-0-]*\/[0-9]{6}\/",url):
+    def _scrape_mt(self,url:str):
+        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com\.mt\/(news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
             return Payload(error=f"URL is not a valid MaltaToday article")
         
         try:
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
-            
-            with open("test.html","w", encoding="utf-8") as f:
-                f.write(content)
-            
-            tree = html.fromstring(content)
+            tree = html.fromstring(content)            
 
-            # title = tree.xpath('//*[@id="content"]/section/div/div[1]/div/div/div[2]/div/div/div/h1')[0].text
-            title = tree.cssselect('.article-heading > div:nth-child(1) > div:nth-child(1) > h1:nth-child(1)')[0].text
+            title = tree.cssselect('#content > section > div > div:nth-child(1) > div > div > div:nth-child(2) > div > div > div > h1')[0].text
             
             #Get Body
             # body = self.get_nested_text(tree.xpath('/html/body/div[1]/section/div/div[2]/div[2]/div/div[1]/div[1]/div')[0])            
@@ -170,7 +164,6 @@ class ArticleScraper:
         
         return Payload(data={"title":title, "imgs":imgs, "body" :body})
     
-    
     def get_nested_text(self,element:HtmlElement, theshift:bool=False):            
         
         return " ".join(
@@ -181,8 +174,7 @@ class ArticleScraper:
         
     def url_to_bytestring(self,url:str):
         t = time()
-        print(url)
-        while len(img_data := requests.get(url).content) <= 146 and time()-t < 5:
-            sleep(0.3)
+        while len(img_data := requests.get(url).content) <= 146 and time()-t < 1:
+            sleep(0.1)
 
         return b64encode(img_data).decode("ascii")

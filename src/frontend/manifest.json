@@ -16,9 +16,9 @@
 
     "content_scripts": [{
           "js": ["scripts/content.js"],
-          "matches": ["*://timesofmalta.com/article/*",
-                      "*://theshiftnews.com/*/*/*/*",
-                      "*://www.maltatoday.com.mt/news/national/*",
-                      "*://www.maltatoday.com.mt/environment/*/*"]}]
+          "matches": ["https://timesofmalta.com/article/*",
+                      "https://theshiftnews.com/*/*/*/*",
+                      "https://www.maltatoday.com.mt/news/*/*",
+                      "https://www.maltatoday.com.mt/environment/*/*"]}]
   }
   

@@ -24,8 +24,13 @@ job_no:int = 0
 queue_1: multiprocessing.Queue = None
 queue_2: multiprocessing.Queue = None       
 
+@app.get(f"/")
+def root() -> dict:
+    return Payload(error="Access token must be passed as a GET parameter. Eg: http://10.59.16.3/{token}/?url={window.location.href}").to_dict()
+    
+
 @app.get(f"/{os.environ['AI_EXT_TOKEN']}/")
-def _endpoint(url:str="") -> dict:
+def endpoint(url:str="") -> dict:
     try:
         global init, job_no, artScraper, queue_1, queue_2
         
@@ -68,7 +73,6 @@ def _endpoint(url:str="") -> dict:
             print(return_payload.error)
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume    
       
-        print(return_payload.data)
         #Group the scores by css selector and update id.
         grouped = {}
         for img_txt in return_payload.data['img_txt']:
@@ -82,7 +86,6 @@ def _endpoint(url:str="") -> dict:
         
         
         return_payload.data['img_txt'] = grouped
-        
         
         
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
