@@ -12,8 +12,7 @@ class NewspaperIndexer:
                                          "https://www.maltatoday.com.mt/news/data_and_surveys",
                                          "https://www.maltatoday.com.mt/news/ewropej"],
                          
-                         "theshift"    :["https://theshiftnews.com/wp-sitemap-posts-post-4.xml",
-                                         "https://theshiftnews.com/wp-sitemap-posts-post-5.xml"]
+                         "theshift"    :["https://theshiftnews.com/wp-sitemap-posts-post-4.xml"]
                         }
         
         self.get_map = {"timesofmalta":self._get_tom,
@@ -24,31 +23,30 @@ class NewspaperIndexer:
             'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
 
-    
-    def get_latest_urls(self,newspaper:str):
+    def get_latest_urls(self,newspaper:str,latest:int=30):
         urls = []
         
         for sitemap in self.sitemaps[newspaper]:
             try:
-                urls += self.get_map[newspaper](sitemap)
+                urls += self.get_map[newspaper](sitemap,latest)
             except Exception as e:
                 print(f"Could not extract urls from {sitemap}")
         
         return urls   
     
-    def _get_tom(self,sitemap):
+    def _get_tom(self,sitemap,latest):
         content = requests.get(sitemap,headers=self.headers).content
         article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url']]
 
-        return article_urls
+        return article_urls[-latest:]
       
-    def _get_ts(self,sitemap):
+    def _get_ts(self,sitemap,latest):
         content = requests.get(sitemap,headers=self.headers).content
         article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url'][-40:]]
                   
-        return article_urls
+        return article_urls[-latest:]
         
-    def _get_mt(self,sitemap):
+    def _get_mt(self,sitemap,latest):
         
         content = requests.get(sitemap,headers=self.headers).content.decode('utf-8')                
         tree = html.fromstring(content)        
@@ -64,6 +62,6 @@ class NewspaperIndexer:
                             for i in [0,1,2,4] # [3]=`Trending Articles`
                                 for article in sections[i].cssselect('.news-article')]
         
-        return article_urls
+        return article_urls[-latest:]
         
     

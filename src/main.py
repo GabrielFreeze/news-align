@@ -3,9 +3,10 @@ import traceback
 from time import time
 import multiprocessing
 from fastapi import FastAPI
-from gpu_backend import GPU_Backend
-from article_scraper import ArticleScraper
-from utils import Payload, GPU_Payload, color
+from common.color import color
+from backend.gpu_backend import GPU_Backend
+from common.payload import Payload,GPU_Payload
+from common.article_scraper import ArticleScraper
 from fastapi.middleware.cors import CORSMiddleware
     
 app = FastAPI()
@@ -34,6 +35,7 @@ def endpoint(url:str="") -> dict:
     try:
         global init, job_no, artScraper, queue_1, queue_2
         
+        #Initialisation
         if not init:
             #Queues for maintaining communication between this process and `gpu_proc`
             queue_1 = multiprocessing.Queue()

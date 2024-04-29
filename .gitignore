@@ -5,17 +5,19 @@
 !LICENSE
 
 #Backend
-!src/backend/main.py
-!src/backend/gpu_backend.py
-!src/backend/utils.py
-!src/backend/article_scraper.py
+!src/backend/*.py
 
 #Frontend
 !src/frontend/images/*
 !src/frontend/elements/*/*
 !src/frontend/scripts/*
+!src/frontend/manifest.json
 
 #Vector_DB
-!src/vector_db/listener.py
-!src/vector_db/indexer.py
-!src/vector_db/utils.py
+!src/vector_db/*.py
+
+#Common
+!src/common/*.py
+
+!src/main.py
+!src/listener.py
