@@ -209,6 +209,9 @@ class ArticleScraper:
         while len(img_data := requests.get(url).content) <= 146 and time()-t < 1:
             sleep(0.1)
 
+        if len(img_data) <= 146:
+            return ""
+        
         return b64encode(img_data).decode("ascii")
 
     def format_date(self,date:str):

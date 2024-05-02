@@ -13,38 +13,33 @@ Image = ndarray[ImageDType]
 Images = List[Image]
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+print(f"Device: {device}")
 
 class MultimodalEmbeddingFunction(EmbeddingFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print(f"Device: {device}")
 
         self.model, self.vis_processors, self.txt_processors = (
             load_model_and_preprocess(name="blip2_feature_extractor",model_type="pretrain",is_eval=True,device=device)
         )
+        self.model.eval()
+        
 
-    
-    def __call__(self, input: List[Tuple[Image, str]]) -> Embeddings:
+    def __call__(self, input:Tuple[Image,str]) -> Embeddings:
 
-        feat = []
-        for img,txt in input:
-            img = self.vis_processors["eval"](img).unsqueeze(0).to(device)
-            txt = self.txt_processors["eval"](txt)
-            feat.append(
-                l:=self.model.extract_features(
-                    {"image": img,"text_input": [txt]},
-                    mode='multimodal').multimodal_embeds.squeeze(0).tolist()
-            )
-            
-        return feat
+        img = self.vis_processors["eval"](input[0]).unsqueeze(0).to(device)
+        txt = self.txt_processors["eval"](input[1])
+
+        embedding = self.model.extract_features(
+            {"image": img,"text_input": [txt]},mode='multimodal'
+        ).multimodal_embeds.squeeze().flatten().tolist()
+        
+        return embedding
         
 class TextEmbeddingFunction(EmbeddingFunction):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        
-        print(f"Device: {device}")
-        
+                
         self.embedding_prompt = "Represent this news article for searching relevant passages about events, people, dates, and facts."
         
         self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
