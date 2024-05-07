@@ -224,11 +224,11 @@ class ArticleScraper:
             img_links = [f"https://www.independent.com.mt{img.attrib['src']}"
                          for img in tree.cssselect("span > img")]
                         
-            for i,img_link in enumerate(img_links):
+            for img_link in img_links:
                 imgs.append({
                     "data": self.url_to_bytestring(img_link,return_empty=ignore_imgs),
                     "alt": "", #Malta Independent images do not have captions as of 5/6/2024
-                    "css-selector": f"span img:nth-child({i+1})"
+                    "css-selector": f"span img"
                 })
         except Exception as e:
             print(url)
@@ -251,10 +251,39 @@ class ArticleScraper:
             with open('test.html',mode="w",encoding='utf-8') as f:
                 f.write(content)
             
+            title = tree.cssselect("h1.entry-title")[0].text
+            body  = self.get_nested_text(
+                tree.cssselect(".td-post-content")[0]
+            )
+            date  = tree.cssselect("meta[property='article:modified_time']")[0].attrib['content']
+
+
+            img_css = "figure img"
+            imgs = [{
+                "data": self.url_to_bytestring(
+                    max(
+                        map(
+                            lambda src: src.split(" "),
+                            img.attrib['srcset'].split(", ")
+                        ),
+                        key=lambda src_w: int(src_w[1][:-1])
+                    )[0],
+                    return_empty=ignore_imgs
+                ),
+                "alt": img.attrib['alt'].replace('-',' '),
+                "css-selector": img_css
+
+            } for img in tree.cssselect(img_css)]
+
         except Exception as e:
             print(url)
             traceback.print_exc()
             return Payload(f"Unexpected Error: {repr(e)}")
+    
+        return Payload(data={"title":title,
+                             "imgs" :imgs,
+                             "body" :body,
+                             "date" :date})
         
     def get_nested_text(self,element:HtmlElement, theshift:bool=False):            
         
