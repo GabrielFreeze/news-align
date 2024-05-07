@@ -1,40 +1,35 @@
+import json
 import torch
-import numpy as np
-from numpy import ndarray
+from PIL import Image
 import torch.nn.functional as F
-from typing import Union, List, Tuple
 from transformers import AutoTokenizer, AutoModel
 from lavis.models import load_model_and_preprocess
 from chromadb import Documents, EmbeddingFunction, Embeddings
 
-# Image Types
-ImageDType = Union[np.uint, np.int_, np.float_]
-Image = ndarray[ImageDType]
-Images = List[Image]
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Device: {device}")
 
-class MultimodalEmbeddingFunction(EmbeddingFunction):
+class ImageEmbeddingFunction(EmbeddingFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model, self.vis_processors, self.txt_processors = (
-            load_model_and_preprocess(name="blip2_feature_extractor",model_type="pretrain",is_eval=True,device=device)
+            load_model_and_preprocess(name="blip2_feature_extractor",model_type="pretrain",is_eval=True,device=self.device)
         )
-        self.model.eval()
+        self.model.eval()      
+
+    def __call__(self, input) -> Embeddings:
         
-
-    def __call__(self, input:Tuple[Image,str]) -> Embeddings:
-
-        img = self.vis_processors["eval"](input[0]).unsqueeze(0).to(device)
-        txt = self.txt_processors["eval"](input[1])
-
+        input = Image.fromarray(input)
         embedding = self.model.extract_features(
-            {"image": img,"text_input": [txt]},mode='multimodal'
-        ).multimodal_embeds.squeeze().flatten().tolist()
+            {
+                "image"     : self.vis_processors["eval"](input).unsqueeze(0).to(self.device),
+                "text_input": None
+            }, mode="image"
+        ).image_embeds
         
-        return embedding
+        return embedding.squeeze().flatten().tolist()
         
 class TextEmbeddingFunction(EmbeddingFunction):
     def __init__(self, *args, **kwargs) -> None:
@@ -68,4 +63,7 @@ class TextEmbeddingFunction(EmbeddingFunction):
         
         return embeddings
 
-        
+
+def format_document(payload_data:dict,query:bool=False):
+    captions = json.dumps([img['alt'] or "" for img in payload_data['imgs']])
+    return f"search_{['document','query'][query]}:{payload_data['title']}. {payload_data['body']}. {captions}"

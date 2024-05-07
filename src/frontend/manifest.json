@@ -5,7 +5,7 @@
     "version": "2024.04.11",
 
     "action": {
-      "default_popup": "elements/default_popup.html",
+      "default_popup": "elements/default_popup/default_popup.html",
       "default_icon": "images/default_icon.png"
     },
 
@@ -19,5 +19,8 @@
           "matches": ["https://timesofmalta.com/article/*",
                       "https://theshiftnews.com/*/*/*/*",
                       "https://www.maltatoday.com.mt/news/*/*",
-                      "https://www.maltatoday.com.mt/environment/*/*"]}]
+                      "https://www.maltatoday.com.mt/environment/*/*",
+                      "https://www.independent.com.mt/articles/*/local-news/*",
+                      "https://newsbook.com.mt/en/*"]
+    }]
   }

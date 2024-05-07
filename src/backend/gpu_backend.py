@@ -11,7 +11,6 @@ from torch.nn.functional import softmax
 from common.payload import Payload, GPU_Payload
 from lavis.models import load_model_and_preprocess
 
-
 class GPU_Backend():
     def __init__(self) -> None:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -64,8 +63,10 @@ class GPU_Backend():
             
     def _get_gencap(self, img:Image.Image, max_length:int=70) ->  str:
         
+        img = self.i2t_vis["eval"](img).unsqueeze(0).to(self.device)
+        
         #Perform image-to-text on every image
-        return self.i2t_model.generate({"image": self.i2t_vis["eval"](img).unsqueeze(0).to(self.device)},
+        return self.i2t_model.generate({"image":img},
                                        max_length=max_length)
      
     def __call__(self,payload:GPU_Payload) -> GPU_Payload:

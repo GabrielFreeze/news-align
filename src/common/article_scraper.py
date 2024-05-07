@@ -9,7 +9,6 @@ from lxml.html import HtmlElement
 from common.payload import Payload
 from dateutil.parser import parse as date_parse
 
-
 class ArticleScraper:
     def __init__(self):
         self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
@@ -17,7 +16,9 @@ class ArticleScraper:
     def scrape(self, url:str,ignore_imgs:bool=False) -> Payload:
         scraper_map = {"timesofmalta":self._scrape_tom,
                        "theshiftnews":self._scrape_ts,
-                       "maltatoday"  :self._scrape_mt}
+                       "maltatoday"  :self._scrape_mt,
+                       "independent" :self._scrape_ind,
+                       "newsbook"    :self._scrape_nb}
 
         match = re.search(r"(?:https?:\/\/)(?:www\.)?([a-zA-Z0-9-]+)\.com", url)
 
@@ -30,7 +31,7 @@ class ArticleScraper:
     def _scrape_tom(self,url:str,ignore_imgs:bool=False):        
         
         if (k:="timesofmalta.com/article/") not in url:
-            return Payload(error=f"URL does not include sub-string {k}")
+            return Payload(error=f"{url} does not include sub-string {k}")
         
         try:
             #Get article
@@ -80,7 +81,7 @@ class ArticleScraper:
             
         except Exception as e:
             traceback.print_exc()
-            return Payload(error=f"Unexpected Error: {traceback.format_exc()}")
+            return Payload(error=f"Unexpected Error: {repr(e)}")
 
                                 # Join thumbnail and image data    vvv
         return Payload(data={"title":title,
@@ -91,15 +92,16 @@ class ArticleScraper:
     def _scrape_ts(self,url:str,ignore_imgs:bool=False):
         
         if not re.search(r"(?:https?:\/\/)(?:www\.)?theshiftnews\.com\/[0-9]{4}\/[0-9]{2}\/[0-9]{2}\/",url):
-            return Payload(error=f"URL is not a valid TheShiftNews article")
+            return Payload(error=f"{url} is not a valid TheShiftNews article")
         
         try:
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
             tree = html.fromstring(content)
             
             #Skip Maltese Articles
-            if tree.cssselect('.content > p:nth-child(1) > i:nth-child(1) > a:nth-child(1)'):
-                raise Exception("English is the only supported language but article is in Maltese")
+                            
+            if tree.cssselect('div.content:nth-child(1) > p:nth-child(1) > em:nth-child(1) > a:nth-child(1)'):
+                raise Exception(f"English is the only supported language but {url} is in Maltese")
 
             title = tree.cssselect('.title')[0].text
 
@@ -135,7 +137,7 @@ class ArticleScraper:
             
         except Exception as e:
             traceback.print_exc()
-            return Payload(f"Unexpected Error: {traceback.format_exc()}")
+            return Payload(f"Unexpected Error: {repr(e)}")
         
         return Payload(data={"title":title,
                              "imgs" :imgs,
@@ -143,11 +145,11 @@ class ArticleScraper:
                              "date" :date})
 
     def _scrape_mt(self,url:str,ignore_imgs:bool=False):
-        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com\.mt\/(news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
-            return Payload(error=f"URL is not a valid MaltaToday article")
+        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com(\.mt)?(\/)*(?:news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
+            return Payload(error=f"{url} is not a valid MaltaToday article")
         
         try:
-            content = requests.get(url,headers=self.headers).content.decode('utf-8')
+            content = requests.get(url,headers=self.headers,verify=False).content.decode('utf-8')
             tree = html.fromstring(content)            
 
             title = tree.cssselect('#content > section > div > div:nth-child(1) > div > div > div:nth-child(2) > div > div > div > h1')[0].text
@@ -156,7 +158,8 @@ class ArticleScraper:
             body = self.get_nested_text(tree.cssselect('.content')[0])
             
             #Get Date
-            date = tree.cssselect(".date")[0].text
+            try: date = tree.cssselect(".date")[0].text
+            except: date = tree.cssselect(".date_last_published")[0].text.replace("Last updated on ","")
             date = self.format_date(date)
             
             #Get Images,Captions, and CSS Selector
@@ -177,21 +180,82 @@ class ArticleScraper:
                 img = img.cssselect(f'img')[0]
                 
                 imgs.append({
-                    "data":self.url_to_bytestring("https:"+img.attrib['src'],
+                    "data": self.url_to_bytestring("https:"+img.attrib['src'],
                                                   return_empty=ignore_imgs),
                     "alt": img.attrib['alt'],
                     "css-selector": f'{css} img',
                 })
 
         except Exception as e:
+            print(url)
             traceback.print_exc()
-            return Payload(f"Unexpected Error: {traceback.format_exc()}")
+            return Payload(f"Unexpected Error: {repr(e)}")
         
         return Payload(data={"title":title,
                              "imgs" :imgs,
                              "body" :body,
                              "date" :date})
     
+    def _scrape_ind(self,url:str,ignore_imgs:bool=False):
+        if not re.search(r"(?:https?:\/\/)(?:www\.)?independent\.com(\.mt)?(\/)*articles\/[0-9]{4}-[0-9]{2}-[0-9]{2}\/local-news\/*",url):
+            return Payload(error=f"{url} is not a valid Malta Independent article")
+        
+        try:
+            content = requests.get(url,headers=self.headers,verify=False).content.decode('utf-8')
+            tree = html.fromstring(content)
+                        
+            title = tree.cssselect("head > title")[0].text
+            body  = self.get_nested_text(
+                tree.cssselect(".text-container")[0]
+            )
+            date = self.format_date(
+                tree.cssselect(".date-published")[0].text
+            )
+            
+            #Thumbnail
+            thumbnail_link = tree.cssselect("meta[property='og:image']")[0].attrib['content']
+            imgs = [{
+                "data": self.url_to_bytestring(thumbnail_link,return_empty=ignore_imgs),
+                "alt": "",
+                "css-selector": "article.entry-wrapper > div.image-section > img"
+            }]
+            
+            #Rest of the images
+            img_links = [f"https://www.independent.com.mt{img.attrib['src']}"
+                         for img in tree.cssselect("span > img")]
+                        
+            for i,img_link in enumerate(img_links):
+                imgs.append({
+                    "data": self.url_to_bytestring(img_link,return_empty=ignore_imgs),
+                    "alt": "", #Malta Independent images do not have captions as of 5/6/2024
+                    "css-selector": f"span img:nth-child({i+1})"
+                })
+        except Exception as e:
+            print(url)
+            traceback.print_exc()
+            return Payload(f"Unexpected Error: {repr(e)}")
+        
+        return Payload(data={"title":title,
+                             "imgs" :imgs,
+                             "body" :body,
+                             "date" :date})
+    
+    def _scrape_nb(self,url:str,ignore_imgs:bool=False):
+        if not re.search(r"(?:https?:\/\/)(?:www\.)?newsbook\.com(\.mt)?\/en\/*",url):
+            return Payload(error=f"{url} is not a valid /english/ NewsBook article")
+
+        try:
+            content = requests.get(url,headers=self.headers,verify=False).content.decode('utf-8')
+            tree = html.fromstring(content)
+            
+            with open('test.html',mode="w",encoding='utf-8') as f:
+                f.write(content)
+            
+        except Exception as e:
+            print(url)
+            traceback.print_exc()
+            return Payload(f"Unexpected Error: {repr(e)}")
+        
     def get_nested_text(self,element:HtmlElement, theshift:bool=False):            
         
         return " ".join(
@@ -206,8 +270,8 @@ class ArticleScraper:
             return ""
         
         t = time()
-        while len(img_data := requests.get(url).content) <= 146 and time()-t < 1:
-            sleep(0.1)
+        while len(img_data := requests.get(url).content) <= 146 and time()-t < 10:
+            sleep(0.2)
 
         if len(img_data) <= 146:
             return ""
@@ -215,6 +279,10 @@ class ArticleScraper:
         return b64encode(img_data).decode("ascii")
 
     def format_date(self,date:str):
+        
+        if date is None:
+            return ""
+        
         return (date_parse(date,dayfirst=True,ignoretz=True,yearfirst=False)
                 .date()
                 .strftime("%d-%m-%Y"))
