@@ -1,4 +1,6 @@
+import os
 import torch
+import chromadb
 import traceback
 from time import time
 from PIL import Image
@@ -10,11 +12,21 @@ from typing import Union, List, Tuple
 from torch.nn.functional import softmax
 from common.payload import Payload, GPU_Payload
 from lavis.models import load_model_and_preprocess
+from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, format_document
 
 class GPU_Backend():
     def __init__(self) -> None:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Device: {self.device}")
+        
+        client = chromadb.HttpClient(host="localhost",port=8000)
+        
+        self.text_fn = TextEmbeddingFunction(remote=True)
+        self.text_collection = client.get_or_create_collection(name="text_collection",embedding_function=self.text_fn)
+
+        #Initialise Image Vector Database
+        self.img_fn = ImageEmbeddingFunction(remote=True)
+        self.img_collection = client.get_or_create_collection(name="img_collection",embedding_function=self.img_fn)
         
         self.itm_model, self.itm_vis, _ = load_model_and_preprocess(name="blip2_image_text_matching",
                                                                            model_type="pretrain", is_eval=True,
@@ -34,7 +46,7 @@ class GPU_Backend():
         for i,img in enumerate(imgs):
             
             element = {}
-            
+
             if img['data']: #Image Data
         
                 if img['alt']: #Image Data and Image Alt
@@ -68,7 +80,21 @@ class GPU_Backend():
         #Perform image-to-text on every image
         return self.i2t_model.generate({"image":img},
                                        max_length=max_length)
-     
+
+    def _get_vectordb_rating(self,data:dict):
+        key_doc = format_document(data,query=True)
+        
+        result = self.text_collection.query(
+            query_texts=key_doc
+        )
+        
+        for d,metadata in zip(result['distances'][0],
+                              result['metadatas'][0]):
+            print(d)
+            pass
+
+    
+    
     def __call__(self,payload:GPU_Payload) -> GPU_Payload:
         s=time()
         data = {}
@@ -78,13 +104,15 @@ class GPU_Backend():
         try:    
             data        = payload.data
             this_job_no = payload.job_no
-                        
+            
             #Decode Images
             for i,img in enumerate(data['imgs']):
                 try:     img_data = Image.open(BytesIO(b64decode(img['data']))).convert("RGB")
                 except:  img_data = None
                 finally: data['imgs'][i]['data'] = img_data
-                
+            
+            self._get_vectordb_rating(data)
+            
             #Compute for front image and title
             front_title = self._img_text_matching(
                 {"data":data['imgs'][0]['data'],

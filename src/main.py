@@ -69,6 +69,9 @@ def endpoint(url:str="") -> dict:
         queue_1.put(GPU_Payload(job_no=this_job_no,
                                 payload=payload))
         
+        if payload.error:
+            return payload.to_dict()
+        
         #Await the return payload from `gpu_proc`
         #Make sure the output we retrieved is the one produced by our payload.
         while (return_payload:=queue_2.get()).job_no != this_job_no and not return_payload.error:

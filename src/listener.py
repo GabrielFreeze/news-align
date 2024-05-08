@@ -37,11 +37,11 @@ first = True
 add_additional = False
 
 #INITIALISE
-client = chromadb.PersistentClient(path=os.path.join("vector_db","vector_db"))
+client = chromadb.HttpClient(host="localhost",port=8000)
 
 #Initialise Text Vector Database
-text_fn = TextEmbeddingFunction() 
-text_collection = client.get_or_create_collection(name="text_collection",embedding_function=text_fn)
+txt_fn = TextEmbeddingFunction() 
+txt_collection = client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
 
 #Initialise Image Vector Database
 img_fn = ImageEmbeddingFunction() 
@@ -76,6 +76,7 @@ while first or not sleep(1*3600):
                         print(f"{color.RED}{payload.error}{color.ESC}")
                         print(f"Skipping article...")
                         continue
+
                     
                     data = payload.data
                     
@@ -86,10 +87,11 @@ while first or not sleep(1*3600):
                     article_id = doc2id(json.dumps(payload.data)) #Encode entire payload. If id is different, then the article is new/(was updated).
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
-                    if article_id in text_collection.get()['ids']:
+                    if article_id in txt_collection.get()['ids']:
                         print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        # print("="*40)
+                        
                         continue     
+                    
                     
                     print(f"{color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
@@ -140,7 +142,7 @@ while first or not sleep(1*3600):
                                                 
                     #== ADD ARTICLE TO VECTOR DATABASE ==
                     s=time()
-                    text_collection.add(
+                    txt_collection.add(
                         documents=document,
                         metadatas={
                             "newspaper":newspaper,

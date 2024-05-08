@@ -20,6 +20,7 @@
 !src/common/*.py
 
 !src/main.py
+!src/vectordb_emb_api.py
 !src/listener.py
 
 !src/test.ipynb

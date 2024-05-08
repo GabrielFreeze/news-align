@@ -55,7 +55,13 @@ function onDataFetch(data) {
 
                 //Get values pointed to by key
                 selector_id = data['img_txt'][key][i]['id']
-                score = data['img_txt'][key][i]['score']
+                
+
+                if (i == 0)
+                    score = data['front_title'][0]['score']
+                else
+                    score = data['img_txt'][key][i]['score']
+                
                 
                 //Update image id
                 imageDOM.id = `${selector_id}-${i}`
@@ -70,7 +76,7 @@ function onDataFetch(data) {
                 //Insert the HTML as a child of the containerDOM
                 score_id = `score-${imageDOM.id}`
                 imageDOM.insertAdjacentHTML('afterend',getImageHTML(score, score_id));
-
+                
                 //Add EventListeners to display score when hovering on imageDOM
                 setDisplayOnHover(hoverSelectorID=imageDOM.id,displaySelectorID=score_id)
             

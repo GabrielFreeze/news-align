@@ -1,26 +1,52 @@
 import json
 import torch
+import requests
 from PIL import Image
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 from lavis.models import load_model_and_preprocess
-from chromadb import Documents, EmbeddingFunction, Embeddings
+from chromadb import Embeddings, EmbeddingFunction as _EmbeddingFunction
+
+class EmbeddingFunction(_EmbeddingFunction):    
+    def __init__(self, remote:bool=False):
+        super().__init__()
+        
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.remote = remote
+                
+    def __call__(self,input):
+        if self.remote:
+            
+            #Request for the input to be embedded then return the response
+            endpoints = {TextEmbeddingFunction :'text',
+                         ImageEmbeddingFunction:'img'}
+            return json.loads(
+                requests.get(url=f"http://localhost:8001/{endpoints[type(self)]}",
+                            params={"input":input}).json()
+            )
+            
+        else:
+            return self.process_input(input)
+        
+    def process_input(self,input):
+        raise NotImplementedError("Subclasses must implement `process_input` method")
+        
 
 
 
 class ImageEmbeddingFunction(EmbeddingFunction):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    def __init__(self,**kwargs) -> None:
+        super().__init__(**kwargs)
         
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model, self.vis_processors, self.txt_processors = (
-            load_model_and_preprocess(name="blip2_feature_extractor",model_type="pretrain",is_eval=True,device=self.device)
-        )
-        self.model.eval()      
-
-    def __call__(self, input) -> Embeddings:
+        if not self.remote:
+            self.model, self.vis_processors, self.txt_processors = (
+                load_model_and_preprocess(name="blip2_feature_extractor",model_type="pretrain",is_eval=True,device=self.device)
+            )
+            self.model.eval()
         
+
+    def process_input(self, input) -> Embeddings:
+                 
         input = Image.fromarray(input)
         embedding = self.model.extract_features(
             {
@@ -32,17 +58,17 @@ class ImageEmbeddingFunction(EmbeddingFunction):
         return embedding.squeeze().flatten().tolist()
         
 class TextEmbeddingFunction(EmbeddingFunction):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-                
+    def __init__(self,**kwargs) -> None:
+        super().__init__(**kwargs)
+        
         self.embedding_prompt = "Represent this news article for searching relevant passages about events, people, dates, and facts."
         
-        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-        self.model = AutoModel.from_pretrained("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
-        self.model.eval()
-    
-    def __call__(self, input: Documents) -> Embeddings:
-            
+        if not self.remote:
+            self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+            self.model = AutoModel.from_pretrained("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
+            self.model.eval()
+        
+    def process_input(self, input) -> Embeddings:   
         encoded_input = self.tokenizer(input, padding=True,truncation=True, return_tensors='pt')
 
         with torch.no_grad():

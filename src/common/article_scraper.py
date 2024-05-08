@@ -98,10 +98,9 @@ class ArticleScraper:
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
             tree = html.fromstring(content)
             
-            #Skip Maltese Articles
-                            
+            #Skip Maltese Articles            
             if tree.cssselect('div.content:nth-child(1) > p:nth-child(1) > em:nth-child(1) > a:nth-child(1)'):
-                raise Exception(f"English is the only supported language but {url} is in Maltese")
+                return Payload(f"English is the only supported language but {url} is in Maltese")
 
             title = tree.cssselect('.title')[0].text
 
@@ -257,23 +256,55 @@ class ArticleScraper:
             )
             date  = tree.cssselect("meta[property='article:modified_time']")[0].attrib['content']
 
-
-            img_css = "figure img"
-            imgs = [{
-                "data": self.url_to_bytestring(
+            #Gets the highest resolution image from a srcset
+            srcset_to_bytestring = lambda srcset: \
+                self.url_to_bytestring(
                     max(
                         map(
                             lambda src: src.split(" "),
-                            img.attrib['srcset'].split(", ")
+                            srcset.split(", ")
                         ),
                         key=lambda src_w: int(src_w[1][:-1])
                     )[0],
                     return_empty=ignore_imgs
-                ),
-                "alt": img.attrib['alt'].replace('-',' '),
-                "css-selector": img_css
+                )
 
-            } for img in tree.cssselect(img_css)]
+
+            imgs = []
+            thumbnail_css = "div.td-post-featured-image > a > img"
+            
+            #If above selector does not exist,
+            #then thumbnail has selector like rest of images
+            if thumbnail:=tree.cssselect(thumbnail_css):
+                imgs=[{
+                    "data": srcset_to_bytestring(
+                        thumbnail[0].attrib['srcset']
+                    ),
+                    "alt": thumbnail[0].attrib['alt'],
+                    "css-selector": thumbnail_css
+                }]
+                        
+            img_css = "figure"
+            for fig in tree.cssselect(img_css):
+                img = fig.cssselect("img")[0]
+                
+                #If the figure doesn't have a caption, we will take the alt-text
+                if cap:=fig.cssselect("figcaption"):
+                    txt = cap[0].text
+                else:
+                    txt = img.attrib['alt'].replace('-',' ')
+                
+                img_data = srcset_to_bytestring(
+                    fig.cssselect("img")[0].attrib['srcset']
+                )
+                
+                imgs.append({
+                    "data": img_data,
+                    "alt": txt,
+                    "css-selector": img_css
+                })
+                
+                
 
         except Exception as e:
             print(url)
