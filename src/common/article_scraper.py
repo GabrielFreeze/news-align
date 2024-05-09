@@ -250,6 +250,10 @@ class ArticleScraper:
             with open('test.html',mode="w",encoding='utf-8') as f:
                 f.write(content)
             
+            
+            #Check if article belongs in the correct category
+            
+            
             title = tree.cssselect("h1.entry-title")[0].text
             body  = self.get_nested_text(
                 tree.cssselect(".td-post-content")[0]
@@ -268,7 +272,6 @@ class ArticleScraper:
                     )[0],
                     return_empty=ignore_imgs
                 )
-
 
             imgs = []
             thumbnail_css = "div.td-post-featured-image > a > img"

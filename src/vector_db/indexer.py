@@ -1,3 +1,4 @@
+import re
 import traceback
 import requests
 import xmltodict
@@ -12,12 +13,18 @@ class NewspaperIndexer:
                                          "https://www.maltatoday.com.mt/news/data_and_surveys",
                                          "https://www.maltatoday.com.mt/news/ewropej"],
                          
-                         "theshift"    :["https://theshiftnews.com/wp-sitemap-posts-post-4.xml"]
+                         "theshift"    :["https://theshiftnews.com/wp-sitemap-posts-post-4.xml"],
+                         
+                         "newsbook"    :["https://newsbook.com.mt/sitemap_index.xml"],
+                         
+                         "independent" :["https://www.independent.com.mt/local?pg="]
                         }
         
         self.get_map = {"timesofmalta":self._get_tom,
                         "theshift"    :self._get_ts,
-                        "maltatoday"  :self._get_mt}
+                        "maltatoday"  :self._get_mt,
+                        "newsbook"    :self._get_nb,
+                        "independent" :self._get_ind}
         
         self.headers = {
             'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -30,21 +37,22 @@ class NewspaperIndexer:
             try:
                 urls += self.get_map[newspaper](sitemap,latest)
             except Exception as e:
+                traceback.print_exc()
                 print(f"Could not extract urls from {sitemap}")
         
         return urls   
     
     def _get_tom(self,sitemap,latest):
         content = requests.get(sitemap,headers=self.headers).content
-        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url']]
+        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url'][-latest:]]
 
-        return article_urls[-latest:]
+        return article_urls
       
     def _get_ts(self,sitemap,latest):
         content = requests.get(sitemap,headers=self.headers).content
-        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url'][-40:]]
+        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url'][-latest:]]
                   
-        return article_urls[-latest:]
+        return article_urls
         
     def _get_mt(self,sitemap,latest):
         
@@ -55,13 +63,66 @@ class NewspaperIndexer:
             
         if sections == []:
             article_urls = ["https://maltatoday.com"+a.attrib["href"]
-                            for a in tree.cssselect("div.large-article a")]
+                            for a in tree.cssselect("div.large-article a")[-latest:]]
             
         else:
             article_urls = ["https://maltatoday.com"+article.attrib['data-url']
                             for i in [0,1,2,4] # [3]=`Trending Articles`
-                                for article in sections[i].cssselect('.news-article')]
+                                for article in sections[i].cssselect('.news-article')][-latest:]
         
-        return article_urls[-latest:]
-        
+        return article_urls
     
+    def _get_nb(self,sitemap,latest):
+        content = requests.get(sitemap,headers=self.headers).content        
+               
+               
+        all_sitemaps = [(a['loc'],match.group(1))
+                        for a in xmltodict.parse(content)['sitemapindex']['sitemap']
+                        if (match:=re.match("https:\/\/newsbook\.com\.mt\/post-sitemap([0-9]+).xml",a['loc']))]
+                
+        #Sort the list by their idx. Higher idx = Newer Sitemaps
+        all_sitemaps.sort(key=lambda s_idx: int(s_idx[1]), reverse=True)
+        
+        urls = []
+        
+        #Iterate through all sitemaps and urls (starting from the latest one) until the amount is reached.
+        for s,_ in all_sitemaps:
+            content = requests.get(s,headers=self.headers).content.decode('utf-8')
+            
+            sitemap_urls = xmltodict.parse(content)['urlset']['url']
+            
+            for a in reversed(sitemap_urls):
+            
+                if re.match("https:\/\/newsbook\.com\.mt\/en\/",a['loc']):
+                    
+                    #TODO: If Statement to check whether article belongs to the 'local' tag
+                    raise NotImplementedError()
+                    
+                    urls.append(a['loc'])
+                    
+                    if len(urls) >= latest:
+                        return urls
+        
+        return urls
+    
+    def _get_ind(self,sitemap,latest):
+        
+        urls = []
+        pg_num = 0
+        articles_remaining = []
+        
+        while len(urls) < latest:
+            
+            if not articles_remaining:
+                pg_num += 1
+                tree = html.fromstring(
+                    requests.get(f'{sitemap}{pg_num}',headers=self.headers).content.decode('utf-8')
+                )
+                
+                articles_remaining = tree.cssselect("div.image-section a")
+                
+            urls.append(
+                f"https://www.independent.com.mt/{articles_remaining.pop(0).attrib['href']}"
+            )
+        
+        return urls

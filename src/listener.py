@@ -26,9 +26,8 @@ def get_additonal_urls():
     p = os.path.join('vector_db','urls')
     urls = []
     
-    for f in os.listdir(p):
-        if f.startswith("additional_"):
-            urls += pd.read_csv(os.path.join(p,f))['URL'].tolist()
+    for f in ['newsbook','independent']:
+        urls += pd.read_csv(os.path.join(p,f))['URL'].tolist()
     
     print(f"Scraping {len(urls)} additional URLs")
     return urls
@@ -77,23 +76,19 @@ while first or not sleep(1*3600):
                         print(f"Skipping article...")
                         continue
 
-                    
                     data = payload.data
                     
                     # == GET ARTICLE ID ==
                     document = format_document(payload.data)
-                    # _captions = json.dumps([img['alt'] or "" for img in data['imgs']])
-                    # document = f"search_document:{data['title']}. {data['body']}. {_captions}"
-                    article_id = doc2id(json.dumps(payload.data)) #Encode entire payload. If id is different, then the article is new/(was updated).
+                    #Encode entire payload. If id is different, then the article is new/(was updated).
+                    article_id = doc2id(json.dumps(payload.data))
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if article_id in txt_collection.get()['ids']:
                         print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        
-                        continue     
+                        continue
                     
-                    
-                    print(f"{color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
+                    print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
                     
                     #== ADD IMAGES TO VECTOR DATABASE ==
