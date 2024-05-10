@@ -4,7 +4,7 @@ div.image-caption-score {
     left:0;
     height:100%;
     width:100%;
-    background-color: rgba(255, 255, 255, 0.7);
+    background-color: rgba(3, 132, 158, 0.414);
     border-radius: 10px;
     border: 2px solid #ddd;
     box-sizing: border-box;
@@ -17,8 +17,5 @@ div.image-caption-score {
     text-align: center;
     font-size: 2rem;
     color: #0f201e;
-
-    /* Score is only displayed when appropriate div is hovered */
-    display: none;
 }
 

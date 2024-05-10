@@ -1,32 +1,35 @@
-function getImageHTML(score,id) {
-    return `<div class="image-caption-score" id="${id}">
-                <p>Image Caption Similarity: ${score.toFixed(2)}</p>
-            </div>`
-}
+async function setDisplayOnHover(hoverID, displayID, analytics) {  
 
-function setDisplayOnHover(hoverSelectorID, displaySelectorID) {
-    
-    const hoverElement   = document.getElementById(hoverSelectorID);
-    const displayElement = document.getElementById(displaySelectorID);
+    const response = await fetch(chrome.runtime.getURL('elements/image_hover/image_hover.html'));
+    html = await response.text()
+
+    //Replace the placeholder values in `image_hover.html` with values received from the server-side
+    html = html.replace("%THIS_IMAGE_ID%",displayID)
+               .replace("%SCORE%",analytics)
+
+    //Create container div to hold D3.js chart
+    const displayElement = document.createElement('div');
+    displayElement.setAttribute('style', 'position:relative !important');
+    displayElement.id = displayID;
+    displayElement.innerHTML = html;
+
+    const hoverElement = document.getElementById(hoverID);
 
     //Display+Hide rules for hoverElement
     hoverElement.addEventListener('mouseenter', () => {
-        displayElement.style.display = 'block';
+        hoverElement.parentNode.appendChild(displayElement)
     });
     hoverElement.addEventListener('mouseleave', () => {
-        displayElement.style.display = 'none';
+        if (displayElement) {displayElement.remove();}
     });
 
     //Display+Hide rules for displayElement (to avoid flickering)
     displayElement.addEventListener('mouseenter', () => {
-        displayElement.style.display = 'block';
+        hoverElement.parentNode.appendChild(displayElement)
     });
     displayElement.addEventListener('mouseleave', () => {
-        displayElement.style.display = 'none';
+        if (displayElement) {displayElement.remove();}
     });
-    
-
-    
 }
 
 
@@ -53,32 +56,26 @@ function onDataFetch(data) {
                 /*Assign a unique ID to the image (and their parent) elements.
                 This is so we can target them with CSS rules*/
 
-                //Get values pointed to by key
+                //Get CSS Selector of image-group
                 selector_id = data['img_txt'][key][i]['id']
                 
-
+                //If it's the first image (thumbnail), display the front-title score instead of the img_txt score.
                 if (i == 0)
-                    score = data['front_title'][0]['score']
+                    this_img_analytics = data['front_title'][0]['score']
                 else
-                    score = data['img_txt'][key][i]['score']
-                
-                
-                //Update image id
+                    this_img_analytics = data['img_txt'][key][i]['score']
+                                
+                //Make the hoverable image have a unique ID based on its selector and position within selector.
                 imageDOM.id = `${selector_id}-${i}`
 
-                //Update container id
-                containerDOM = imageDOM.parentNode
+                analytics_id = `analytics-${imageDOM.id}`
 
-                //Setup HTML Score Container for every image.
-                //Set the container to have relative positioning
-                containerDOM.setAttribute('style', 'position:relative !important');
-                
-                //Insert the HTML as a child of the containerDOM
-                score_id = `score-${imageDOM.id}`
-                imageDOM.insertAdjacentHTML('afterend',getImageHTML(score, score_id));
-                
-                //Add EventListeners to display score when hovering on imageDOM
-                setDisplayOnHover(hoverSelectorID=imageDOM.id,displaySelectorID=score_id)
+                //Add EventListeners to inject D3.js chart when hovering on imageDOM
+                setDisplayOnHover(
+                    hoverID=imageDOM.id   , /*ID of imageDOM to be hovered on.*/
+                    displayID=analytics_id, /*ID of pop-up dashboard that will be shown when imageDOM is hovered.*/
+                    analytics=this_img_analytics     /*Values received from server-side to display in pop-up dashboard. */
+                )
             
             });
         }

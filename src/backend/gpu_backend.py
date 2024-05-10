@@ -88,9 +88,10 @@ class GPU_Backend():
             query_texts=key_doc
         )
         
+        
         for d,metadata in zip(result['distances'][0],
                               result['metadatas'][0]):
-            print(d)
+            print(metadata)
             pass
 
     

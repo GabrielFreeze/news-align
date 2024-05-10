@@ -95,11 +95,16 @@ class NewspaperIndexer:
             
                 if re.match("https:\/\/newsbook\.com\.mt\/en\/",a['loc']):
                     
-                    #TODO: If Statement to check whether article belongs to the 'local' tag
-                    raise NotImplementedError()
+                    #Check if article belongs to the Local tag
+                    tree = html.fromstring(
+                        requests.get(a['loc'],headers=self.headers).content.decode('utf-8')
+                    )
+                    all_categories = [category.text for category in tree.cssselect("li.entry-category a")]
+                    if "Local" not in all_categories:
+                        continue
                     
                     urls.append(a['loc'])
-                    
+                    print(str(len(urls)).zfill(4),end='\r')
                     if len(urls) >= latest:
                         return urls
         
@@ -110,19 +115,20 @@ class NewspaperIndexer:
         urls = []
         pg_num = 0
         articles_remaining = []
-        
-        while len(urls) < latest:
-            
-            if not articles_remaining:
-                pg_num += 1
-                tree = html.fromstring(
-                    requests.get(f'{sitemap}{pg_num}',headers=self.headers).content.decode('utf-8')
+        try:
+            while len(urls) < latest:
+                
+                if not articles_remaining:
+                    pg_num += 1
+                    tree = html.fromstring(
+                        requests.get(f'{sitemap}{pg_num}',headers=self.headers).content.decode('utf-8')
+                    )
+                    
+                    articles_remaining = tree.cssselect("div.image-section a")
+                    
+                urls.append(
+                    f"https://www.independent.com.mt/{articles_remaining.pop(0).attrib['href']}"
                 )
-                
-                articles_remaining = tree.cssselect("div.image-section a")
-                
-            urls.append(
-                f"https://www.independent.com.mt/{articles_remaining.pop(0).attrib['href']}"
-            )
-        
+        except Exception:
+            pass #8!==D~~
         return urls

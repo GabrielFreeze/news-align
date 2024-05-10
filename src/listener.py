@@ -26,14 +26,14 @@ def get_additonal_urls():
     p = os.path.join('vector_db','urls')
     urls = []
     
-    for f in ['newsbook','independent']:
+    for f in ['additional_nb.csv','additional_ind.csv']:
         urls += pd.read_csv(os.path.join(p,f))['URL'].tolist()
     
     print(f"Scraping {len(urls)} additional URLs")
     return urls
             
 first = True
-add_additional = False
+add_additional = True
 
 #INITIALISE
 client = chromadb.HttpClient(host="localhost",port=8000)
@@ -59,7 +59,7 @@ while first or not sleep(1*3600):
     
     try:
         #Download articles
-        for newspaper in ["timesofmalta","theshift","maltatoday"]:
+        for newspaper in ["newsbook","timesofmalta","theshift","maltatoday"]:
             
             to_index = newsIndexer.get_latest_urls(newspaper,50)
             if first and add_additional: to_index += get_additonal_urls()
@@ -85,53 +85,56 @@ while first or not sleep(1*3600):
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if article_id in txt_collection.get()['ids']:
-                        print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        continue
-                    
+                        # print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
+                        # continue
+                        txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
+                        
                     print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
                     
                     #== ADD IMAGES TO VECTOR DATABASE ==
                     for i,img_payload in enumerate(data['imgs']):
-                        
-                        s=time()
-                        txt = img_payload['alt'] or ""
-                        byte_string = img_payload["data"]
-                        
-                        if byte_string == "":
-                            print(f"{color.YELLOW}Image data is empty... Skipping{color.ESC}")
-                            continue
+                        try:
+                            s=time()
+                            txt = img_payload['alt'] or ""
+                            byte_string = img_payload["data"]
+                            
+                            if byte_string == "":
+                                print(f"{color.YELLOW}Image data is empty... Skipping{color.ESC}")
+                                continue
 
-                        img_id = doc2id(byte_string)
-                        img_ids.append(img_id) #Keep track of ALL image_ids
-                        
-                        #Discard non-unique ids
-                        if img_id in img_collection.get()['ids']:
-                            print(f"{color.YELLOW}Image is non-unique... Skipping{color.ESC}")
-                            continue
-                        
-                        #Add image to vector database
-                        img = np.array(
-                            Image.open(BytesIO(b64decode(byte_string))).convert("RGB")
-                        )
-                        
-                        img_collection.add(
+                            img_id = doc2id(byte_string)
+                            img_ids.append(img_id) #Keep track of ALL image_ids
                             
-                            embeddings=img_fn(img), 
+                            #Discard non-unique ids
+                            if img_id in img_collection.get()['ids']:
+                                print(f"{color.YELLOW}Image is non-unique... Skipping{color.ESC}")
+                                continue
                             
-                            #Adding the caption, url and css-selector to the metadata.
-                            metadatas={
-                                "newspaper" :newspaper,
-                                "article_id":article_id, #Add reference to article entry in article database
-                                "caption"   :txt,
-                                "selector"  :img_payload['css-selector'],
-                            },
+                            #Add image to vector database
+                            img = np.array(
+                                Image.open(BytesIO(b64decode(byte_string))).convert("RGB")
+                            )
                             
-                            #ID is the hashed img.
-                            ids=img_id
-                        )
-                        print(f"Adding Image: {color.GREEN}{round(time()-s,2)}s{color.ESC}")
-                        img_count += 1
+                            img_collection.add(
+                                
+                                embeddings=img_fn(img), 
+                                
+                                #Adding the caption, url and css-selector to the metadata.
+                                metadatas={
+                                    "newspaper" :newspaper,
+                                    "article_id":article_id, #Add reference to article entry in article database
+                                    "caption"   :txt,
+                                    "selector"  :img_payload['css-selector'],
+                                },
+                                
+                                #ID is the hashed img.
+                                ids=img_id
+                            )
+                            img_count += 1
+                            print(f"Adding Image: {color.GREEN}{round(time()-s,2)}s{color.ESC}")
+                        except Exception as e:
+                            pass
                     print(f"\n{'='*45}\n")
                         
                                                 

@@ -245,15 +245,8 @@ class ArticleScraper:
 
         try:
             content = requests.get(url,headers=self.headers,verify=False).content.decode('utf-8')
-            tree = html.fromstring(content)
-            
-            with open('test.html',mode="w",encoding='utf-8') as f:
-                f.write(content)
-            
-            
-            #Check if article belongs in the correct category
-            
-            
+            tree = html.fromstring(content)            
+                        
             title = tree.cssselect("h1.entry-title")[0].text
             body  = self.get_nested_text(
                 tree.cssselect(".td-post-content")[0]
@@ -289,16 +282,16 @@ class ArticleScraper:
                         
             img_css = "figure"
             for fig in tree.cssselect(img_css):
-                img = fig.cssselect("img")[0]
+                if not (img:=fig.cssselect("img")):
+                    continue
                 
-                #If the figure doesn't have a caption, we will take the alt-text
-                if cap:=fig.cssselect("figcaption"):
-                    txt = cap[0].text
-                else:
-                    txt = img.attrib['alt'].replace('-',' ')
+                img = img[0]
+                
+                #We will take the alt-text as a caption for newsbook
+                txt = img.attrib['alt'].replace('-',' ')
                 
                 img_data = srcset_to_bytestring(
-                    fig.cssselect("img")[0].attrib['srcset']
+                    img.attrib['srcset']
                 )
                 
                 imgs.append({
