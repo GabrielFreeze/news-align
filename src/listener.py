@@ -9,10 +9,10 @@ from time import time
 from PIL import Image
 from io import BytesIO
 from time import sleep
-from hashlib import md5
 from random import randint
 from base64 import b64decode
 from common.color import color
+from common.payload import data2id
 from vector_db.indexer import NewspaperIndexer
 from common.article_scraper import ArticleScraper
 from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, format_document
@@ -20,8 +20,7 @@ from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, forma
 import warnings
 warnings.filterwarnings("ignore")
 
-def doc2id(txt:str):
-    return md5(txt.encode()).hexdigest()
+
 def get_additonal_urls():
     p = os.path.join('vector_db','urls')
     urls = []
@@ -81,7 +80,7 @@ while first or not sleep(1*3600):
                     # == GET ARTICLE ID ==
                     document = format_document(payload.data)
                     #Encode entire payload. If id is different, then the article is new/(was updated).
-                    article_id = doc2id(json.dumps(payload.data))
+                    article_id = data2id(payload.data)
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if article_id in txt_collection.get()['ids']:
@@ -103,7 +102,7 @@ while first or not sleep(1*3600):
                                 print(f"{color.YELLOW}Image data is empty... Skipping{color.ESC}")
                                 continue
 
-                            img_id = doc2id(byte_string)
+                            img_id = data2id(byte_string)
                             img_ids.append(img_id) #Keep track of ALL image_ids
                             
                             #Discard non-unique ids

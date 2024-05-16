@@ -1,4 +1,5 @@
 import json
+from hashlib import md5
 from warnings import warn
 
 class Payload():
@@ -22,3 +23,9 @@ class GPU_Payload(Payload):
                          data=payload.data)
         
         self.job_no = job_no
+        
+        
+def data2id(data):
+    if type(data) is dict:
+        data = json.dumps(data)
+    return md5(data.encode()).hexdigest()

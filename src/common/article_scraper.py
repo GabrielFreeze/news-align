@@ -89,7 +89,8 @@ class ArticleScraper:
                              "imgs" :[thumbnail_bytes]+imgs_bytes+slider_bytes,
                              "body" :body,
                              "date" :date,
-                             "newspaper":self.newspaper})
+                             "newspaper":self.newspaper,
+                             "url"  :url})
 
     def _scrape_ts(self,url:str,ignore_imgs:bool=False):
         
@@ -144,7 +145,8 @@ class ArticleScraper:
                              "imgs" :imgs,
                              "body" :body,
                              "date" :date,
-                             "newspaper":self.newspaper})
+                             "newspaper":self.newspaper,
+                             "url"  :url})
 
     def _scrape_mt(self,url:str,ignore_imgs:bool=False):
         if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com(\.mt)?(\/)*(?:news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
@@ -197,7 +199,8 @@ class ArticleScraper:
                              "imgs" :imgs,
                              "body" :body,
                              "date" :date,
-                             "newspaper":self.newspaper})
+                             "newspaper":self.newspaper,
+                             "url"  :url})
     
     def _scrape_ind(self,url:str,ignore_imgs:bool=False):
         if not re.search(r"(?:https?:\/\/)(?:www\.)?independent\.com(\.mt)?(\/)*articles\/[0-9]{4}-[0-9]{2}-[0-9]{2}\/local-news\/*",url):
@@ -242,7 +245,8 @@ class ArticleScraper:
                              "imgs" :imgs,
                              "body" :body,
                              "date" :date,
-                             "newspaper":self.newspaper})
+                             "newspaper":self.newspaper,
+                             "url"  :url})
     
     def _scrape_nb(self,url:str,ignore_imgs:bool=False):
         if not re.search(r"(?:https?:\/\/)(?:www\.)?newsbook\.com(\.mt)?\/en\/*",url):
@@ -314,7 +318,8 @@ class ArticleScraper:
                              "imgs" :imgs,
                              "body" :body,
                              "date" :date,
-                             "newspaper":self.newspaper})
+                             "newspaper":self.newspaper,
+                             "url"  :url})
         
     def get_nested_text(self,element:HtmlElement, theshift:bool=False):            
         
