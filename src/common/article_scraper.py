@@ -12,7 +12,7 @@ from dateutil.parser import parse as date_parse
 class ArticleScraper:
     def __init__(self):
         self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
-        
+        self.newspaper = None
     def scrape(self, url:str,ignore_imgs:bool=False) -> Payload:
         scraper_map = {"timesofmalta":self._scrape_tom,
                        "theshiftnews":self._scrape_ts,
@@ -24,6 +24,7 @@ class ArticleScraper:
 
         #Ensure that the provided website is valid
         if match and (key:=match.group(1)) in scraper_map.keys():
+            self.newspaper = key
             return scraper_map[key](url,ignore_imgs)
         else:
             return Payload(error=f"{url} does not belong to the following domain names: {list(scraper_map.keys())}")
@@ -87,7 +88,8 @@ class ArticleScraper:
         return Payload(data={"title":title,
                              "imgs" :[thumbnail_bytes]+imgs_bytes+slider_bytes,
                              "body" :body,
-                             "date" :date})
+                             "date" :date,
+                             "newspaper":self.newspaper})
 
     def _scrape_ts(self,url:str,ignore_imgs:bool=False):
         
@@ -141,7 +143,8 @@ class ArticleScraper:
         return Payload(data={"title":title,
                              "imgs" :imgs,
                              "body" :body,
-                             "date" :date})
+                             "date" :date,
+                             "newspaper":self.newspaper})
 
     def _scrape_mt(self,url:str,ignore_imgs:bool=False):
         if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com(\.mt)?(\/)*(?:news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
@@ -193,7 +196,8 @@ class ArticleScraper:
         return Payload(data={"title":title,
                              "imgs" :imgs,
                              "body" :body,
-                             "date" :date})
+                             "date" :date,
+                             "newspaper":self.newspaper})
     
     def _scrape_ind(self,url:str,ignore_imgs:bool=False):
         if not re.search(r"(?:https?:\/\/)(?:www\.)?independent\.com(\.mt)?(\/)*articles\/[0-9]{4}-[0-9]{2}-[0-9]{2}\/local-news\/*",url):
@@ -237,7 +241,8 @@ class ArticleScraper:
         return Payload(data={"title":title,
                              "imgs" :imgs,
                              "body" :body,
-                             "date" :date})
+                             "date" :date,
+                             "newspaper":self.newspaper})
     
     def _scrape_nb(self,url:str,ignore_imgs:bool=False):
         if not re.search(r"(?:https?:\/\/)(?:www\.)?newsbook\.com(\.mt)?\/en\/*",url):
@@ -299,9 +304,7 @@ class ArticleScraper:
                     "alt": txt,
                     "css-selector": img_css
                 })
-                
-                
-
+                        
         except Exception as e:
             print(url)
             traceback.print_exc()
@@ -310,7 +313,8 @@ class ArticleScraper:
         return Payload(data={"title":title,
                              "imgs" :imgs,
                              "body" :body,
-                             "date" :date})
+                             "date" :date,
+                             "newspaper":self.newspaper})
         
     def get_nested_text(self,element:HtmlElement, theshift:bool=False):            
         

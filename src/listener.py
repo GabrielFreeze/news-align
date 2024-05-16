@@ -33,13 +33,13 @@ def get_additonal_urls():
     return urls
             
 first = True
-add_additional = True
+add_additional = False
 
 #INITIALISE
 client = chromadb.HttpClient(host="localhost",port=8000)
 
 #Initialise Text Vector Database
-txt_fn = TextEmbeddingFunction() 
+txt_fn = TextEmbeddingFunction(remote=True)
 txt_collection = client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
 
 #Initialise Image Vector Database
@@ -59,7 +59,7 @@ while first or not sleep(1*3600):
     
     try:
         #Download articles
-        for newspaper in ["newsbook","timesofmalta","theshift","maltatoday"]:
+        for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
             
             to_index = newsIndexer.get_latest_urls(newspaper,50)
             if first and add_additional: to_index += get_additonal_urls()
@@ -85,9 +85,9 @@ while first or not sleep(1*3600):
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if article_id in txt_collection.get()['ids']:
-                        # print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        # continue
-                        txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
+                        print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
+                        continue
+                        # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
                         
                     print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
@@ -117,7 +117,7 @@ while first or not sleep(1*3600):
                             )
                             
                             img_collection.add(
-                                
+                                document=byte_string,
                                 embeddings=img_fn(img), 
                                 
                                 #Adding the caption, url and css-selector to the metadata.

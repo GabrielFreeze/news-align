@@ -1,7 +1,6 @@
-
 """
 Command to start this api:
-    `web-extension\src > uvicorn vectordb_api:app --host=localhost --port=8001`
+    `web-extension\src > uvicorn vectordb_emb_api:app --host=localhost --port=8001`
 """
 
 import json

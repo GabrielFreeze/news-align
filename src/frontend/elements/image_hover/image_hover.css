@@ -1,10 +1,12 @@
-div.image-caption-score {
+div.d3-dashboard {
     position: absolute; /* Position the container relative to the viewport */
-    top:0;
-    left:0;
-    height:100%;
-    width:100%;
-    background-color: rgba(3, 132, 158, 0.414);
+    bottom:0;
+    right: 0;
+    height:3em;
+    width:12em;
+
+    /* background-color: rgba(228, 147, 42, 0.116); */
+    background-color: rgba(228, 147, 42, 0.851);
     border-radius: 10px;
     border: 2px solid #ddd;
     box-sizing: border-box;
@@ -12,10 +14,17 @@ div.image-caption-score {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 9999;
-
+    
     text-align: center;
     font-size: 2rem;
     color: #0f201e;
+    z-index: 9999;
+
+}
+
+circle {
+    fill: steelblue;
+    stroke: #333;
+    stroke-width: 1.5px;
 }
 

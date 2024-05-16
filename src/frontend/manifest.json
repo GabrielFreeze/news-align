@@ -8,14 +8,20 @@
       "default_popup": "elements/default_popup/default_popup.html",
       "default_icon": "images/default_icon.png"
     },
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self';"
+    },
 
     "web_accessible_resources": [{
       "resources": ["elements/image_hover/image_hover.html",
-                    "elements/image_hover/image_hover.css"],
+                    "elements/image_hover/image_hover.css",
+                    "elements/image_hover/image_hover.js",
+                    "elements/image_hover/trigger.js",
+                    "elements/image_hover/d3.js"],
       "matches":   ["<all_urls>"]}],
 
     "content_scripts": [{
-          "js": ["scripts/content.js"],
+          "js": ["scripts/d3.js","scripts/content.js"],
           "matches": ["https://timesofmalta.com/article/*",
                       "https://theshiftnews.com/*/*/*/*",
                       "https://www.maltatoday.com.mt/news/*/*",

@@ -11,6 +11,7 @@ from common.color import color
 from typing import Union, List, Tuple
 from torch.nn.functional import softmax
 from common.payload import Payload, GPU_Payload
+from common.article_scraper import ArticleScraper
 from lavis.models import load_model_and_preprocess
 from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, format_document
 
@@ -20,6 +21,10 @@ class GPU_Backend():
         print(f"Device: {self.device}")
         
         client = chromadb.HttpClient(host="localhost",port=8000)
+        
+        
+        self.backup_scraper = ArticleScraper()
+        
         
         self.text_fn = TextEmbeddingFunction(remote=True)
         self.text_collection = client.get_or_create_collection(name="text_collection",embedding_function=self.text_fn)
@@ -48,7 +53,7 @@ class GPU_Backend():
             element = {}
 
             if img['data']: #Image Data
-        
+                
                 if img['alt']: #Image Data and Image Alt
                     img_txt  = img['alt']
                     img_data = self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device)
@@ -63,9 +68,9 @@ class GPU_Backend():
                 
             else: #No Image Data
                 element['gen_txt'] = ""
-                element['score'] = ""
+                element['score']   = ""
             
-            element['css-selector']    = img['css-selector']
+
             element['id'] = md5(element['css-selector'].encode()).hexdigest()
             
             #Add element to result
@@ -81,21 +86,51 @@ class GPU_Backend():
         return self.i2t_model.generate({"image":img},
                                        max_length=max_length)
 
-    def _get_vectordb_rating(self,data:dict):
+    def _get_similar_by_text(self,data:dict):
         key_doc = format_document(data,query=True)
         
-        result = self.text_collection.query(
-            query_texts=key_doc
+        #Get top-k similar articles
+        retrieved_articles = self.text_collection.query(
+            query_texts=key_doc,
+            n_results=15,
         )
         
+        related = []
         
-        for d,metadata in zip(result['distances'][0],
-                              result['metadatas'][0]):
-            print(metadata)
-            pass
-
-    
-    
+        for d,metadata,doc in zip(retrieved_articles['distances'][0],
+                              retrieved_articles['metadatas'][0],
+                              retrieved_articles['documents'][0]):
+            
+            #If key article and retrieved article do not talk about the same event
+            if d > 0.4:
+                continue
+            
+            #If key article and retrieved article are duplicate
+            if d <= 0.05 and data['newspaper'] == metadata['newspaper']:
+                continue
+            
+            #Get selector of thumbnail article
+            thumbnail_metadata = self.img_collection.get(
+                #ID of thumbnail is first in list
+                ids=metadata['img_ids'].split(',')[0]
+            )['metadatas'][0]
+            
+            thumbnail_selector = thumbnail_metadata['selector']
+            thumbnail_caption  = thumbnail_metadata['caption']
+            
+            related.append({
+                "rating": 1-d, #Turns distance into score
+                "alt":    thumbnail_caption,
+                "data":   doc or self.backup_scraper.scrape("url")['data']['imgs'][0]['data'],
+                #                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                #Older entries in the vector database dont have their bytestring, so we re-download it.
+                "css-selector": thumbnail_selector,
+                "newspaper":    metadata['newspaper'],
+                "url":          metadata['url'],
+            })
+            
+        return related
+                
     def __call__(self,payload:GPU_Payload) -> GPU_Payload:
         s=time()
         data = {}
@@ -112,16 +147,33 @@ class GPU_Backend():
                 except:  img_data = None
                 finally: data['imgs'][i]['data'] = img_data
             
-            self._get_vectordb_rating(data)
+            #Get similar articles by text
+            topic_articles = [{
+                "rating": 1,    #Similarity score to self (100%)
+                "alt":          data['alt'],
+                "data":         data['imgs'][0]['data'], #First image (index 0) is thumbnail
+                "css-selector": data['imgs'][0]['css-selector'],
+                "newspaper":    data['newspaper'],
+                "url":          None #URL of key article is the current webpage. Regardless we add the key in the dict for consistency
+            }]
             
-            #Compute for front image and title
+            topic_articles += self._get_similar_by_text(data)
+            
             front_title = self._img_text_matching(
-                {"data":data['imgs'][0]['data'],
-                 "alt":data['title'],
-                 "css-selector":data['imgs'][0]['css-selector']}
+                topic_articles
             )
             
-            # Compute for front image and title
+            #Topic articles are just the similarity scores of all articles. Then in JS you choose the key article by comparing the url
+            
+            
+            #Compute for front image and title
+            # front_title = self._img_text_matching({
+            #     "data":data['imgs'][0]['data'],
+            #     "alt":data['title'],
+            #     "css-selector":data['imgs'][0]['css-selector']
+            # })
+            
+            #Compute for front image and title
             front_body = self._img_text_matching(
                 {"data":data['imgs'][0]['data'],
                  "alt":data['body'],
@@ -136,7 +188,6 @@ class GPU_Backend():
             print(f'[{this_job_no}] Images Processed: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
             s=time()
             
-             
             #Format data              
             data = {"front_title"  : front_title,
                     "front_body"   : front_body ,
