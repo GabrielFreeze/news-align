@@ -60,7 +60,7 @@ while first or not sleep(1*3600):
         #Download articles
         for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
             
-            to_index = newsIndexer.get_latest_urls(newspaper,50)
+            to_index = newsIndexer.get_latest_urls(newspaper,1000)
             if first and add_additional: to_index += get_additonal_urls()
             
             #Get article URLS
@@ -84,9 +84,9 @@ while first or not sleep(1*3600):
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if article_id in txt_collection.get()['ids']:
-                        print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        continue
-                        # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
+                        # print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
+                        # continue
+                        txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
                         
                     print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
@@ -103,37 +103,67 @@ while first or not sleep(1*3600):
                                 continue
 
                             img_id = data2id(byte_string)
-                            img_ids.append(img_id) #Keep track of ALL image_ids
+                            img_ids.append(img_id) #Keep track of ALL image_ids of the current article
                             
-                            #Discard non-unique ids
-                            if img_id in img_collection.get()['ids']:
-                                print(f"{color.YELLOW}Image is non-unique... Skipping{color.ESC}")
-                                continue
-                            
-                            #Add image to vector database
-                            img = np.array(
-                                Image.open(BytesIO(b64decode(byte_string))).convert("RGB")
-                            )
-                            
-                            img_collection.add(
-                                document=byte_string,
-                                embeddings=img_fn(img), 
+                            '''In the case of a repeated image, we just want to update the metadata,
+                            so we keep track of all articles that featured the image'''
+
+                            #Update image in vector database
+                            if img_metadata:=img_collection.get(ids=img_id)['metadatas']:
+                
+                                img_metadata = img_metadata[0]
+
+                                #Add this article_id into the JSON list of article_ids.
+                                img_metadata['article_ids'] = json.dumps(
+                                    json.loads(img_metadata['article_ids']) + [article_id]
+                                )
                                 
-                                #Adding the caption, url and css-selector to the metadata.
-                                metadatas={
-                                    "newspaper" :newspaper,
-                                    "article_id":article_id, #Add reference to article entry in article database
-                                    "caption"   :txt,
-                                    "selector"  :img_payload['css-selector'],
-                                },
+                                #Add this current caption (txt) into the JSON list of captions.
+                                img_metadata['captions'] = json.dumps(
+                                    json.loads(img_metadata['captions']) + [txt]
+                                )
                                 
-                                #ID is the hashed img.
-                                ids=img_id
-                            )
-                            img_count += 1
-                            print(f"Adding Image: {color.GREEN}{round(time()-s,2)}s{color.ESC}")
+                                #Add this image selector into the JSON list of selectors.
+                                img_metadata['selectors'] = json.dumps(
+                                    json.loads(img_metadata['selectors']) + [img_payload['css-selector']]
+                                )
+                                
+                                #Update the entry
+                                img_collection.update(
+                                    ids=img_id,
+                                    metadatas=img_metadata
+                                )
+                                print(f"Updating Image: {color.GREEN}{round(time()-s,2)}s{color.ESC}")
+
+                            else:
+                                #Add image to vector database
+                                img_collection.add(
+
+                                    documents=byte_string,
+                                    
+                                    #img_fn automatically converts bytestring to Image
+                                    embeddings=img_fn(byte_string),
+                                    
+                                    #Adding the current caption, url and css-selector to the metadata.
+                                    
+                                    #TEMP:We put every field in a json.dumps([]) because the image
+                                    #might have multiple article_ids/captions/selectors across different articles
+                                    #TODO:Make another table
+                                    metadatas={
+                                        #Add reference to article entry in article database
+                                        "article_ids": json.dumps([article_id]),
+                                        "captions"   : json.dumps([txt]),
+                                        "selectors"  : json.dumps([img_payload['css-selector']]),
+                                    },
+                                    
+                                    #ID is the hashed img.
+                                    ids=img_id
+                                )
+                                img_count += 1
+                                print(f"Adding Image: {color.GREEN}{round(time()-s,2)}s{color.ESC}")
+                                      
                         except Exception as e:
-                            pass
+                            traceback.print_exc()
                     print(f"\n{'='*45}\n")
                         
                                                 

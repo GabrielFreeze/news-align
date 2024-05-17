@@ -117,7 +117,7 @@ class NewspaperIndexer:
         articles_remaining = []
         try:
             while len(urls) < latest:
-                
+                print(str(len(urls)).zfill(6),end='\r')
                 if not articles_remaining:
                     pg_num += 1
                     tree = html.fromstring(
@@ -130,5 +130,5 @@ class NewspaperIndexer:
                     f"https://www.independent.com.mt/{articles_remaining.pop(0).attrib['href']}"
                 )
         except Exception:
-            pass #8!==D~~
+            traceback.print_exc()
         return urls

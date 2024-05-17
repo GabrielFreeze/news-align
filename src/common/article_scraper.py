@@ -335,8 +335,8 @@ class ArticleScraper:
             return ""
         
         t = time()
-        while len(img_data := requests.get(url).content) <= 146 and time()-t < 10:
-            sleep(0.2)
+        while len(img_data := requests.get(url,headers=self.headers).content) <= 146 and time()-t < 10:
+            sleep(0.4)
 
         if len(img_data) <= 146:
             return ""

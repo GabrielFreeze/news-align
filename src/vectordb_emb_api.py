@@ -35,15 +35,11 @@ def txt_fn(input:str=""):
 @app.get('/img')
 def img_fn(input:str=""):
     global img_init,_img_fn
+    
     if not img_init:
         _img_fn = ImageEmbeddingFunction()
         img_init = True
-        
-    #Decode the image bytestring
-    img = np.array(
-        Image.open(BytesIO(b64decode(input))).convert("RGB")
-    )
     
     return json.dumps(
-        _img_fn(img)
+        _img_fn(input) #Bytestring is converted to image by img_fn
     )

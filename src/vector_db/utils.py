@@ -1,7 +1,10 @@
 import json
 import torch
 import requests
+import numpy as np
 from PIL import Image
+from io import BytesIO
+from base64 import b64decode
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 from lavis.models import load_model_and_preprocess
@@ -46,8 +49,12 @@ class ImageEmbeddingFunction(EmbeddingFunction):
         
 
     def process_input(self, input) -> Embeddings:
-                 
-        input = Image.fromarray(input)
+        if type(input) is str:
+            input = Image.open(BytesIO(b64decode(input))).convert("RGB")
+        elif type(input) is np.ndarray:
+            input = Image.fromarray(input)
+        
+        
         embedding = self.model.extract_features(
             {
                 "image"     : self.vis_processors["eval"](input).unsqueeze(0).to(self.device),

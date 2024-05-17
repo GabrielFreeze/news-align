@@ -1,10 +1,10 @@
+import json
 import torch
 import chromadb
 import traceback
 from time import time
 from PIL import Image
 from io import BytesIO
-from hashlib import md5
 from base64 import b64decode
 from common.color import color
 from common.payload import data2id
@@ -50,11 +50,11 @@ class GPU_Backend():
             this_job_no = payload.job_no
                         
             #Get similar articles by text (key_article included)
-            related_topic_articles = self._get_related_articles_by_text(data)
+            similar_topic_articles = self._get_similar_articles_by_text(data)
             thumbnail_infos = []
             
             #Extract thumbnail data from the related articles
-            for a in related_topic_articles:
+            for a in similar_topic_articles:
                 thumbnail = self.img_collection.get(
                     ids=a['img_ids'].split(',')[0]
                 )
@@ -66,7 +66,7 @@ class GPU_Backend():
                 thumbnail_data = self._bytestring2image(thumbnail_bytestring), #Load image from bytestring
                 
                 thumbnail_infos.append({
-                    "data": thumbnail_data,
+                    #"data": thumbnail_data,
                     "selector": thumbnail['metadatas'][0]['selector'],
                     "url": a['url'],
                     "newspaper": a['newspaper'],
@@ -79,10 +79,11 @@ class GPU_Backend():
                 })
             
             
-            related_image_articles = self._get_related_articles_by_image(data)
-            image_infos = []
-            #TODO: BNJASFFASEDAFSD
-                
+            #Extract image data for every image in the key article
+            similar_image_articles = self._get_similar_articles_by_images
+                    
+            #TODO: From here
+
             
            
             # #Get selector of thumbnail article
@@ -109,7 +110,6 @@ class GPU_Backend():
             #     "url":          metadata['url'],
             # })
         
-            #TODO: From here
             
             #Compute for front image and title
             front_body = self._img_text_matching(
@@ -164,28 +164,109 @@ class GPU_Backend():
         return scores
  
  
-    def _get_related_articles_by_image(self,data:dict,
-                                       include_self:bool=True):
-        raise NotImplementedError()
-    
-    def _get_related_articles_by_text(self,data:dict,
+    def _get_similar_articles_by_images(self,imgs:list,
+                                       include_self:bool=True):      
+        
+        def get_similar_images(img_bytestring:str):
+                        
+            related = []
+            if include_self:
+                key_img = self.img_collection.get(ids=data2id(img_bytestring))
+                related.append(key_img['metadatas'][0])
+            
+            '''We pass as `query_texts` instead of `query_images` because
+            the search_img is represented as a bytesting,
+            which will then be converted to an image by `img_fn`'''
+            
+            #Get top-k similar images
+            retrieved_images = self.img_collection.query(
+                query_texts=img_bytestring,
+                n_results=15,                
+            )
+                    
+            #Get the metadatas of every similar image retrieved
+            related += [metadata
+                        for d,metadata in zip(retrieved_images['metadatas'][0],
+                                              retrieved_images['metadatas'][0])
+                        if d]
+            #              ^^^
+            #TODO: implement a threshold
+               
+            return related
+        
+        articles_per_img = []
+        
+        for img in imgs:
+            corresponding_articles_per_sim_img = []
+            similar_images = get_similar_images(img['data'])
+            
+            for sim_img in similar_images:    
+                
+                #This list contains information on where every sim_img appears.
+                corresponding_articles_per_sim_img.append({
+                    
+                    #Get all articles where sim_img appears
+                    "metadatas":  self.text_collection.get(
+                        ids=json.loads(sim_img['article_ids'])
+                    )['metadatas'],
+                    
+                    #Get the selectors of the image within the articles
+                    "selectors" : json.loads(sim_img['selector']) #This is a list
+                })
+            
+            articles_per_img.append(
+                corresponding_articles_per_sim_img
+            )
+        
+        return articles_per_img
+                
+                
+                
+            
+            
+            
+            
+            
+            
+            
+            
+            
+        
+        
+        # related_articles_per_img = [
+        #     {
+        #         "article_metadata": self.text_collection.get(
+        #             ids=get_related_article_ids_by_one_image(img['data'])
+        #         )["metadatas"],
+                
+        #     }
+            
+            
+            
+        #     for img in imgs #For every image (in the key article)
+        # ]
+
+        return related_articles_per_img
+            
+    def _get_similar_articles_by_text(self,data:dict,
                                       include_self:bool=True):
         
+        #Include the key article as part of the results.
+        if include_self: 
+            key_article = self.text_collection.get(ids=data2id(data))
+            key_article["metadatas"][0]["distance"] = key_article['distances'][0]
+            related.append(key_article["metadatas"][0])
+            
+        
         #Get top-k similar articles
-        key_doc = format_document(data,query=True)
+        search_doc = format_document(data,query=True)
         retrieved_articles = self.text_collection.query(
-            query_texts=key_doc,
+            query_texts=search_doc,
             n_results=15,
         )
         
         related = []
         
-        #Include the key article as part of the results.
-        if include_self: 
-            key_article = self.text_collection.get(ids=data2id(data))
-            key_article["metadatas"][0] = key_article['distances'][0]
-            related.append(key_article["metadatas"][0])
-          
         for d,metadata in zip(retrieved_articles['distances'][0],
                               retrieved_articles['metadatas'][0]):
             
