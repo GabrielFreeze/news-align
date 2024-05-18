@@ -44,15 +44,15 @@ class NewspaperIndexer:
     
     def _get_tom(self,sitemap,latest):
         content = requests.get(sitemap,headers=self.headers).content
-        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url'][-latest:]]
+        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url']]
 
-        return article_urls
+        return article_urls[-latest:]
       
     def _get_ts(self,sitemap,latest):
         content = requests.get(sitemap,headers=self.headers).content
-        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url'][-latest:]]
+        article_urls = [url['loc'] for url in xmltodict.parse(content)['urlset']['url']]
                   
-        return article_urls
+        return article_urls[-latest:]
         
     def _get_mt(self,sitemap,latest):
         
@@ -63,14 +63,14 @@ class NewspaperIndexer:
             
         if sections == []:
             article_urls = ["https://maltatoday.com"+a.attrib["href"]
-                            for a in tree.cssselect("div.large-article a")[-latest:]]
+                            for a in tree.cssselect("div.large-article a")]
             
         else:
             article_urls = ["https://maltatoday.com"+article.attrib['data-url']
                             for i in [0,1,2,4] # [3]=`Trending Articles`
-                                for article in sections[i].cssselect('.news-article')][-latest:]
+                                for article in sections[i].cssselect('.news-article')]
         
-        return article_urls
+        return article_urls[-latest:]
     
     def _get_nb(self,sitemap,latest):
         content = requests.get(sitemap,headers=self.headers).content        
@@ -115,8 +115,8 @@ class NewspaperIndexer:
         urls = []
         pg_num = 0
         articles_remaining = []
-        try:
-            while len(urls) < latest:
+        while len(urls) < latest:
+            try:
                 print(str(len(urls)).zfill(6),end='\r')
                 if not articles_remaining:
                     pg_num += 1
@@ -129,6 +129,6 @@ class NewspaperIndexer:
                 urls.append(
                     f"https://www.independent.com.mt/{articles_remaining.pop(0).attrib['href']}"
                 )
-        except Exception:
-            traceback.print_exc()
+            except Exception:
+                traceback.print_exc()
         return urls

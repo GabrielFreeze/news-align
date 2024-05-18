@@ -55,11 +55,10 @@ class ImageEmbeddingFunction(EmbeddingFunction):
             input = Image.fromarray(input)
         
         
-        embedding = self.model.extract_features(
-            {
+        embedding = self.model.extract_features({
                 "image"     : self.vis_processors["eval"](input).unsqueeze(0).to(self.device),
                 "text_input": None
-            }, mode="image"
+            },mode="image",
         ).image_embeds
         
         return embedding.squeeze().flatten().tolist()

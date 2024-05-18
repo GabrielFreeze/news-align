@@ -50,22 +50,27 @@ class GPU_Backend():
             this_job_no = payload.job_no
                         
             #Get similar articles by text (key_article included)
-            similar_topic_articles = self._get_similar_articles_by_text(data)
-            thumbnail_infos = []
+            similar_topic_articles = self._get_similar_articles_by_text(data,include_self=True)
+            thumbnails_info = [] #Information about the thumbnail of the article
             
             #Extract thumbnail data from the related articles
             for a in similar_topic_articles:
+                
+                if len(img_ids:=a['img_ids'].split(',')) == 1:
+                    #If there are no img_ids, then just skip this similar_topic_article
+                    continue
+                
                 thumbnail = self.img_collection.get(
-                    ids=a['img_ids'].split(',')[0]
+                    ids=img_ids[0] #First img_id is the thumbnail
                 )
                 
                 thumbnail_bytestring = thumbnail['documents'][0] or self.backup_scraper.scrape(a['url']).data['imgs'][0]['data']
                 #                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                #Older entries in the vector database dont have their bytestring, so we re-download it.
+                #If no thumbnail bytestring was found assosciated with the entry, just redownload it
                 
                 thumbnail_data = self._bytestring2image(thumbnail_bytestring), #Load image from bytestring
                 
-                thumbnail_infos.append({
+                thumbnails_info.append({
                     #"data": thumbnail_data,
                     "selector": thumbnail['metadatas'][0]['selector'],
                     "url": a['url'],
@@ -73,16 +78,64 @@ class GPU_Backend():
                     
                     
                     #Get Thumbnail Similarity Score to Title of article
-                    "title-simil": self._img_text_matching({"data":thumbnail_data,"alt":a['title']}),
+                    "title-simil": self._img_text_matching({"data":thumbnail_data,"alt":a['title']})[0],
                     
-                    "body-simil": self._img_text_matching({"data":thumbnail_data,"alt":a['body']})
+                    #Get Thumbnail Similarity Score to Body of article
+                    "body-simil": self._img_text_matching({"data":thumbnail_data,"alt":a['body']})[0]
                 })
             
             
             #Extract image data for every image in the key article
-            similar_image_articles = self._get_similar_articles_by_images
+            similar_image_articles_per_img = self._get_similar_articles_by_images(data,include_self=True)
+            
+            #Must be same length as number of images in key article
+            images_info = [] #Information about the images of the article
+            
+            #Loop through the results of every image in the key article
+            for sim_image_articles_info in similar_image_articles_per_img:
+                
+                #Will hold the info of the retrieved similar images for this image in the key article
+                this_image_info = []
+                
+                #One image in the key article has multiple similar images
+                for one_sim_img_infos in sim_image_articles_info:
+                    #One similar image has multiple occurences. (We need to list these all)
+                    for i,article_metadata in enumerate(one_sim_img_infos['article_metadatas']):
+                        this_image_info.append({
+                            "caption-simil": self._img_text_matching({
+                                "data": one_sim_img_infos['bytestring'],
+                                "alt" : one_sim_img_infos['captions'][i],
+                            }),
+                            "selector" : one_sim_img_infos['selectors'][i],
+                            "newspaper": article_metadata['newspaper'],
+                            "url"      : article_metadata['newspaper'],
+                        })
+                
+                images_info.append(this_image_info)
+                       
+                
+                
                     
-            #TODO: From here
+                    # x = sim_image_articles_info 
+                    
+                    # #A list of similarity scores for every caption the image has across many newspapers.
+                    # caption_simils = self._img_text_matching([
+                    #     {"data":x['bytestring'], "alt":caption}
+                    #     for caption in x['alt']
+                    # ])
+                    
+                    # for i 
+                    
+                    # images_info.extend({
+                    #     "urls": [article_metadata[]for article_metadata in x['article_metadatas']]
+                    # })
+                    
+                    # images_info.append({
+                    #     "urls"      : [metadata['url']       for metadata in articles['metadatas']],
+                    #     "selectors" : [metadata['selector']  for metadata in articles['metadatas']],
+                    #     "newspapers": [metadata['newspaper'] for metadata in articles['metadatas']],
+                    # })
+                #TODO: From here
 
             
            
@@ -110,6 +163,7 @@ class GPU_Backend():
             #     "url":          metadata['url'],
             # })
         
+            #TODO: from here
             
             #Compute for front image and title
             front_body = self._img_text_matching(
@@ -137,8 +191,8 @@ class GPU_Backend():
                 
         return GPU_Payload(job_no=this_job_no,
                            payload=Payload(data=data,error=error))
-    
-    #TODO: Look up similair articles (by text or image) and use the articles as additional context when calculating the scores
+        
+    # TODO: Look up similair articles (by text or image) and use the articles as additional context when calculating the scores
    
     def _img_text_matching(self,imgs:Union[List[dict],dict]) -> List[dict]:
         
@@ -164,23 +218,16 @@ class GPU_Backend():
         return scores
  
  
-    def _get_similar_articles_by_images(self,imgs:list,
-                                       include_self:bool=True):      
+    def _get_similar_articles_by_images(self,data:dict,
+                                       include_self:str=""):      
         
         def get_similar_images(img_bytestring:str):
                         
-            related = []
-            if include_self:
-                key_img = self.img_collection.get(ids=data2id(img_bytestring))
-                related.append(key_img['metadatas'][0])
-            
-            '''We pass as `query_texts` instead of `query_images` because
-            the search_img is represented as a bytesting,
-            which will then be converted to an image by `img_fn`'''
-            
+            related = []           
+
             #Get top-k similar images
             retrieved_images = self.img_collection.query(
-                query_texts=img_bytestring,
+                self.img_collection._embedding_function(img_bytestring), #Għax jigi bil-ħara man, afdani
                 n_results=15,                
             )
                     
@@ -194,68 +241,86 @@ class GPU_Backend():
                
             return related
         
+        #Every element of this list corresponds to every image in the article
         articles_per_img = []
         
-        for img in imgs:
-            corresponding_articles_per_sim_img = []
-            similar_images = get_similar_images(img['data'])
+        for img in data['imgs']:
+            articles_per_sim_img_of_img = []
             
-            for sim_img in similar_images:    
+            if include_self:
+                #NOTE: We have to do this because the key article might not be currently indexed by the vectorDB
+                key_article_metadatas = {
+                    "distance" : 0,
+                    "url"      : data['url'],
+                    "newspaper": data['newspaper'],
+                    "title"    : data['title'],
+                    "body:"    : data['body'],
+                    
+                    #TODO: I am copying the same process in `listener.py`. I should put this in a function
+                    #TODO: Naming convention of dict needs to be standardized (eg. alt vs captions, selectors vs css-selectors)
+                    "img_ids"  : ",".join([
+                        data2id(img_payload["data"])
+                        for img_payload in data['imgs']
+                    ])
+                }
+                
+                articles_per_sim_img_of_img.append({
+                    #Matching below format.
+                    "article_metadatas" : [key_article_metadatas],
+                    "selectors" : [img['css-selector']],
+                    "caption"   : [img['alt']],
+                    "bytestring": img['data']
+                })
+                            
+            
+            for sim_img in get_similar_images(img['data']):    
                 
                 #This list contains information on where every sim_img appears.
-                corresponding_articles_per_sim_img.append({
+                articles_per_sim_img_of_img.append({
                     
                     #Get all articles where sim_img appears
-                    "metadatas":  self.text_collection.get(
+                    "article_metadatas":  self.text_collection.get(
                         ids=json.loads(sim_img['article_ids'])
                     )['metadatas'],
                     
                     #Get the selectors of the image within the articles
-                    "selectors" : json.loads(sim_img['selector']) #This is a list
+                    "selectors" : json.loads(sim_img['selector']), #This is a list
+                    
+                    #Get the captions of the image within the articles
+                    "captions": json.loads(sim_img['captions']), #This is a list
+                    
+                    #Bytestring is not a list because the image data remains the same despite being in many articles and positions
+                    "bytestring": sim_img['data']
                 })
             
+            
+            #Every image in the article will contain a list of articles where that image is approximated
             articles_per_img.append(
-                corresponding_articles_per_sim_img
+                articles_per_sim_img_of_img
             )
         
         return articles_per_img
-                
-                
-                
-            
-            
-            
-            
-            
-            
-            
-            
-            
-        
-        
-        # related_articles_per_img = [
-        #     {
-        #         "article_metadata": self.text_collection.get(
-        #             ids=get_related_article_ids_by_one_image(img['data'])
-        #         )["metadatas"],
-                
-        #     }
-            
-            
-            
-        #     for img in imgs #For every image (in the key article)
-        # ]
-
-        return related_articles_per_img
-            
+                       
     def _get_similar_articles_by_text(self,data:dict,
                                       include_self:bool=True):
         
         #Include the key article as part of the results.
         if include_self: 
-            key_article = self.text_collection.get(ids=data2id(data))
-            key_article["metadatas"][0]["distance"] = key_article['distances'][0]
-            related.append(key_article["metadatas"][0])
+            #NOTE: We have to do this because the key article might not be currently indexed by the vectorDB
+            key_article_metadatas = {
+                "distance" : 0,
+                "url"      : data['url'],
+                "newspaper": data['newspaper'],
+                "title"    : data['title'],
+                "body:"    : data['body'],
+                
+                #TODO:I am copying the same process in `listener.py`. I should put this in a function
+                "img_ids"  : ",".join([
+                    data2id(img_payload["data"])
+                    for img_payload in data['imgs']
+                ])
+            }
+            related.append(key_article_metadatas)
             
         
         #Get top-k similar articles
