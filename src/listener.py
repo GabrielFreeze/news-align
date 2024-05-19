@@ -60,7 +60,7 @@ while first or not sleep(1*3600):
         #Download articles
         for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
             
-            to_index = newsIndexer.get_latest_urls(newspaper,latest=1000)
+            to_index = newsIndexer.get_latest_urls(newspaper,latest=30)
             if first and add_additional: to_index += get_additonal_urls()
             
             #Get article URLS
@@ -84,9 +84,9 @@ while first or not sleep(1*3600):
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if article_id in txt_collection.get()['ids']:
-                        # print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        # continue
-                        txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
+                        print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
+                        continue
+                        # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
                         
                     print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []

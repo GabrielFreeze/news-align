@@ -115,66 +115,58 @@ async function onDataFetch(data) {
     
     response = await fetch(chrome.runtime.getURL(f='elements/image_hover/image_hover.css'));
     if (!response.ok) throw new Error(`Failed to fetch ${f}`);
-    css = await response.text()
-
-    response = await fetch(chrome.runtime.getURL(f='elements/image_hover/image_hover.js'));
-    if (!response.ok) throw new Error(`Failed to fetch ${f}`);
-    template_js = await response.text()
-    
+    css = await response.text()    
 
     //Add pop-up dashboard CSS rules
     var styleElement = document.createElement('style');
     styleElement.textContent += css
     document.head.appendChild(styleElement);
    
-    //Loop for every css-selector + image
-    const keys = Object.keys(data['img_txt'])
-    for (let i=0; i<keys.length; i++) {
-        const key = keys[i]
-        document.querySelectorAll(key).forEach((hoverElement,j) => {
+    console.log(data)
+
+    // //Loop for every css-selector + image
+    // const keys = Object.keys(data['images_info'])
+    // for (let i=0; i<keys.length; i++) {
+    //     const img_selector = keys[i]
+    //     document.querySelectorAll(img_selector).forEach((hoverElement,j) => {
             
-            hoverElement = hoverElement.parentElement
+    //         hoverElement = hoverElement.parentElement
 
-
-            //i == index of image in article
-            //j == index of image in `key` css-selector
-
-            //Get CSS Selector of image-group
-            selector_id = data['img_txt'][key][j]['id']
+    //         /*This is a list of JSON Object containing information about the current image
+    //         Every element in the list corresponds to another image that is similair to the current image.
+    //         The goal is to display the info of these similar images in the 1-D spectrum.*/
+    //         this_img_info = data['images_info'][img_selector][j]            
             
-            //If it's the first image (thumbnail), display the front-title score instead of the img_txt score.
-            if (i == 0 && j == 0)
-                this_img_analytics = data['front_title'][0]['score']
-            else
-                this_img_analytics = data['img_txt'][key][j]['score']
-                            
-            /*Assign a unique ID to the image (hoverable) and pop-up container (to be displayed).
-            This is so we can target them with EventListeners and D3.js charts*/
+    //         //Get CSS Selector of image-group
+    //         selector_id = data['images_info'][img_selector][j]['id']
 
-            //Make the hoverable image have a unique ID based on its selector and position within selector.
-            hoverElement.id = `${selector_id}-${j}`
+    //         /*Assign a unique ID to the image (hoverable) and pop-up container (to be displayed).
+    //         This is so we can target them with EventListeners and D3.js charts*/
 
-            //This lets the children of hoverElement (dashboardContainer), be displayed on-top of it like a pop-up.
-            hoverElement.setAttribute('style', 'position:relative !important');   
+    //         //Make the hoverable image have a unique ID based on its selector and position within selector.
+    //         hoverElement.id = `${selector_id}-${j}`
+
+    //         //This lets the children of hoverElement (dashboardContainer), be displayed on-top of it like a pop-up.
+    //         hoverElement.setAttribute('style', 'position:relative !important');   
             
-            //Create container div to hold D3.js chart
-            const dashboardContainer = document.createElement('div');
-            dashboardContainer.id = `d3-${hoverElement.id}`;
-            dashboardContainer.classList.add("d3-dashboard")
+    //         //Create container div to hold D3.js chart
+    //         const dashboardContainer = document.createElement('div');
+    //         dashboardContainer.id = `d3-${hoverElement.id}`;
+    //         dashboardContainer.classList.add("d3-dashboard")
 
             
-            //Add EventListeners to inject D3.js chart when hovering on hoverElement
-            setDisplayOnHover(
-                hoverElement,   /*Element to be hovered on.*/
-                dashboardContainer, /*Container Element of pop-up dashboard that will be shown when hoverElement is hovered.*/
-                this_img_analytics /*Data for the dashboard to display */
-            )
+    //         //Add EventListeners to inject D3.js chart when hovering on hoverElement
+    //         setDisplayOnHover(
+    //             hoverElement,   /*Element to be hovered on.*/
+    //             dashboardContainer, /*Container Element of pop-up dashboard that will be shown when hoverElement is hovered.*/
+    //             this_img_analytics /*Data for the dashboard to display */
+    //         )
         
-        });
-    }
+    //     });
+    // }
 
     
-    console.log(data)
+    // console.log(data)
 
 
 }
@@ -194,7 +186,6 @@ fetch(`http://10.59.16.3/${token}/?url=${window.location.href}`)
         } 
         
         onDataFetch(data['data'])
-        
         
     })
     .catch(error => {

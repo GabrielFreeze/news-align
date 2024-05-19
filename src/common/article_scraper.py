@@ -340,8 +340,9 @@ class ArticleScraper:
 
         if len(img_data) <= 146:
             return ""
-        
-        return b64encode(img_data).decode("ascii")
+
+        #It is important to add the below altchars since we will be passing the bytestring in a URL, and slashes would break it.
+        return b64encode(img_data,altchars=b'-_').decode("ascii")
 
     def format_date(self,date:str):
         

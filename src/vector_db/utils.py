@@ -3,9 +3,8 @@ import torch
 import requests
 import numpy as np
 from PIL import Image
-from io import BytesIO
-from base64 import b64decode
 import torch.nn.functional as F
+from common.payload import bytestring2image
 from transformers import AutoTokenizer, AutoModel
 from lavis.models import load_model_and_preprocess
 from chromadb import Embeddings, EmbeddingFunction as _EmbeddingFunction
@@ -18,15 +17,20 @@ class EmbeddingFunction(_EmbeddingFunction):
         self.remote = remote
                 
     def __call__(self,input):
+
         if self.remote:
             
             #Request for the input to be embedded then return the response
-            endpoints = {TextEmbeddingFunction :'text',
-                         ImageEmbeddingFunction:'img'}
-            return json.loads(
-                requests.get(url=f"http://localhost:8001/{endpoints[type(self)]}",
-                            params={"input":input}).json()
+            endpoint = {TextEmbeddingFunction :'text',
+                        ImageEmbeddingFunction:'img'}[type(self)]
+            
+            
+            response = requests.post(
+                url=f"http://localhost:8001/{endpoint}",
+                json={"input": input}
             )
+            
+            return response.json()
             
         else:
             return self.process_input(input)
@@ -49,8 +53,11 @@ class ImageEmbeddingFunction(EmbeddingFunction):
         
 
     def process_input(self, input) -> Embeddings:
+
+
         if type(input) is str:
-            input = Image.open(BytesIO(b64decode(input))).convert("RGB")
+            print(len(input))
+            input = bytestring2image(input)
         elif type(input) is np.ndarray:
             input = Image.fromarray(input)
         
