@@ -54,13 +54,10 @@ class ImageEmbeddingFunction(EmbeddingFunction):
 
     def process_input(self, input) -> Embeddings:
 
-
         if type(input) is str:
-            print(len(input))
             input = bytestring2image(input)
         elif type(input) is np.ndarray:
             input = Image.fromarray(input)
-        
         
         embedding = self.model.extract_features({
                 "image"     : self.vis_processors["eval"](input).unsqueeze(0).to(self.device),

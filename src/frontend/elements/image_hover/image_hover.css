@@ -1,30 +1,59 @@
 div.d3-dashboard {
+    all: initial; /* Reset all CSS properties */
     position: absolute; /* Position the container relative to the viewport */
     bottom:0;
-    right: 0;
-    height:3em;
-    width:12em;
+    left: 0;
+    height:auto;
+    width:auto;
 
     /* background-color: rgba(228, 147, 42, 0.116); */
     background-color: rgba(228, 147, 42, 0.851);
-    border-radius: 10px;
+    border-radius: 8px;
     border: 2px solid #ddd;
-    box-sizing: border-box;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     
+    font-family: Arial, sans-serif;
     text-align: center;
     font-size: 2rem;
     color: #0f201e;
-    z-index: 9999;
+    z-index: 10;
 
 }
 
+line.tick {
+    stroke: steelblue;
+    stroke-width: 1rem;
+    cursor: pointer;
+}
+
 circle {
+    position: absolute;
     fill: steelblue;
     stroke: #333;
     stroke-width: 1.5px;
 }
 
+#d3-preview {
+    all: initial; /* Reset all CSS properties */
+    position: absolute;
+    top:0;
+    left:0;
+    height:auto;
+    width:auto;
+    background: rgba(122, 64, 230, 0.794);
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+
+
+    display:none;
+
+    text-align: center;
+    color: #0f201e;
+    z-index:999;
+}

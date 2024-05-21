@@ -1,32 +1,43 @@
+function removeDuplicatesByKey(array, key) {
+    const seen = new Set();
+    return array.filter(item => {
+        const val = item[key];
+        if (seen.has(val)) {
+            console.log(`Filter out ${val}`)
+            return false; // This value has already been seen, filter it out
+        }
+        seen.add(val);
+        return true; // This is a unique value, keep it
+    });
+}
+
 // This is the function that will populate `chart-container`
 function displayDashboard(data,dashboardContainerID) {
 
-    // const data = {
-    //     this:  0.6,
-    //     mean:  0.5,
-    //     other: [
-    //         [
-    //             "https://timesofmalta.com/article/who-trying-bury-articles-former-vitals-boss-ram-tumuluri.1092342",
-    //             0.3
-    //         ],
-    //         [
-    //             "https://newsbook.com.mt/en/muscat-being-charged-with-bribery-corruption-and-money-laundering/",
-    //             0.8
-    //         ],
-    //         [
-    //             "https://www.independent.com.mt/articles/2024-05-12/local-news/10th-edition-of-Valletta-Green-Festival-launched-6736261049",
-    //             0.3
-    //         ]
-    //     ]
+
+
+    //TODO:continue here + download extension on  laptop i dont give a shit 
+    //Remove duplicate entries
+    // data = removeDuplicatesByKey(data,'url')
+    // if ("title_simil" in data[0]){
+    //     data = removeDuplicatesByKey(data,'title_simil')
+    // } else {
+
+    //     for (let key in Object.keys(data)) {
+    //         data[key]['caption_simil'] = data[key]['caption_simil'][0]
+    //     }
+
+
+    //     data = removeDuplicatesByKey(data,'caption_simil')
     // }
 
-    console.log("D3.js script is running")
 
-    //data = data
-    dataPoints = [0.1, 0.2, 0.5, 0.4, 0.8];
+
+    console.table(data)
+
 
     // Set up SVG dimensions
-    const svgWidth = 300;
+    const svgWidth = 700;
     const svgHeight = 150;
     const margin = {
                 top:5,
@@ -36,7 +47,6 @@ function displayDashboard(data,dashboardContainerID) {
 
     const width  = svgWidth  - margin.left - margin.right;
     const height = svgHeight - margin.top  - margin.bottom;
-
 
     // Create SVG element
     const svg = d3.select(`#${dashboardContainerID}`)
@@ -49,9 +59,8 @@ function displayDashboard(data,dashboardContainerID) {
         .domain([0,1])
         .range([margin.left, width+margin.left]);
 
-
-        y_spacing   = 8
-        line_height = (height/2)
+    y_spacing   = 8
+    line_height = (height/2)
 
     //Draw spectrum line
     svg.append("line")
@@ -64,44 +73,76 @@ function displayDashboard(data,dashboardContainerID) {
 
     //Add data points on spectrum
     svg.selectAll("circle")
-       .data(dataPoints)
+       .data(data)
        .enter().append("circle")
-       .attr("cx", d => xScale(d)) //Position along the spectrum
-       .attr("cy", line_height)    //On line
-       .attr("r", 4);              //Radius of the circle
-
+       .attr("cx", d => xScale(d.title_simil))
+       .attr("cy", line_height)   //On line
+       .attr("r", 6.5)              //Radius of the circle
+       .on("click", (event, d) => {
+            window.open(d.url, '_blank'); //Open article in new tab
+        })
+        .on("mouseover", (event, d) => {
+            d3.select("#d3-preview")
+              .style("display", "block")
+              .html(`<p>${d.url}</p>`);
+        })
+        .on("mousemove", function(event) {
+            d3.select("#d3-preview")
+              .style("display", "block")
+              .style("left",(mouseX+10)-parent.offsetWidth+ "px")
+              .style("top", (mouseY-10)-parent.offsetWidth+ "px");
+        })
+        .on("mouseout", function() {
+            d3.select("#d3-preview")
+              .style("display", "none");
+        });
+    
 
     //Add labels on each data point
     svg.selectAll("text")
-       .data(dataPoints)
+       .data(data)
        .enter().append("text")
-       .attr("x", d => xScale(d))
-       .attr("y", line_height + 20) //Positioned just below the points
-       .text(d => d.toFixed(1))     //Display the value rounded to 1 decimal place
+       .attr("x", d => xScale(d.title_simil))
+       .attr("y", line_height + 20)
+       .text(d => {
+            if ('title_simil' in d) {
+                // console.log("!!")
+                return d.title_simil.toFixed(2)
+            }
+            else {
+                // console.log("??")
+                return d.caption_simil[0].toFixed(2)
+            }
+
+        }) //TODO:
        .attr("text-anchor", "middle")
        .style("font-size", "1rem");
 
 }
 
 
-
-
 async function setDisplayOnHover(hoverElement,dashboardContainer,data) {  
 
-    //Display+Hide rules for hoverElement
-    hoverElement.addEventListener('mouseenter', () => {
-        //Append dashboardContainer as child to hoverElement
-        hoverElement.appendChild(dashboardContainer)
-        displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
-    });
+    //Append dashboardContainer as child to hoverElement
+    hoverElement.appendChild(dashboardContainer)
+    displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
 
-    hoverElement.addEventListener('mouseleave', () => {   
-        if (dashboardContainer) { //Iteratively remove all children (dashboard)
-            while (child=dashboardContainer.firstChild) {
-                dashboardContainer.removeChild(child);
-            }
-        }
-    });
+
+    // //Display+Hide rules for hoverElement
+    // hoverElement.addEventListener('mouseenter', () => {
+        
+    //     //Append dashboardContainer as child to hoverElement
+    //     hoverElement.appendChild(dashboardContainer)
+    //     displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
+    // });
+
+    // hoverElement.addEventListener('mouseleave', () => {   
+    //     if (dashboardContainer) { //Iteratively remove all children (dashboard)
+    //         while (child=dashboardContainer.firstChild) {
+    //             dashboardContainer.removeChild(child);
+    //         }
+    //     }
+    // });
 }
 
 
@@ -121,55 +162,90 @@ async function onDataFetch(data) {
     var styleElement = document.createElement('style');
     styleElement.textContent += css
     document.head.appendChild(styleElement);
-   
-    console.log(data)
 
-    // //Loop for every css-selector + image
-    // const keys = Object.keys(data['images_info'])
-    // for (let i=0; i<keys.length; i++) {
-    //     const img_selector = keys[i]
-    //     document.querySelectorAll(img_selector).forEach((hoverElement,j) => {
+    //Setup 1-D thumbnailInfo spectrum on the thumbnail
+    thumbnailInfo   = data['thumbnail_info'] //List of dicts
+    imagesInfo_keys = Object.keys(data['images_info']) //List of keys to dict
+    
+    thumbnailElement = document.querySelector(thumbnailInfo[0].selector)
+    //                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    //First element of thumbnailInfo is the info about the current article's thumbnail
+    
+    //Specify the hoverable element        
+    hoverElement = thumbnailElement.parentElement //  vv Because its the first element
+    hoverElement.id = `${thumbnailInfo[0].selector_id}-0`
+    hoverElement.setAttribute('style', 'position:relative !important');   
+
+    //Create container div to hold D3.js chart
+    dashboardContainer = document.createElement('div');
+    dashboardContainer.id = `d3-${hoverElement.id}`;
+    dashboardContainer.classList.add("d3-dashboard")
+    
+    //Append a preview container that will display the target articles on hover
+    previewContainer = document.createElement('div')
+    previewContainer.id = "d3-preview"
+    hoverElement.appendChild(previewContainer)
+
+    // Add EventListeners to inject D3.js chart when hovering on hoverElement
+    setDisplayOnHover(
+        hoverElement,        /*Element to be hovered on.                                                             */
+        dashboardContainer, /*Container Element of pop-up dashboard that will be shown when hoverElement is hovered.*/
+        thumbnailInfo      /*Data for the dashboard to display                                                     */
+    )
+
+
+    //Setup 1-D imageInfo spectrum for every image in article (including thumbnail)
+    //Loop for every css-selector + image
+    const keys = Object.keys(data['images_info'])
+    for (let i=0; i<keys.length; i++) {
+        const img_selector = keys[i]
+        document.querySelectorAll(img_selector).forEach((hoverElement,j) => {
             
-    //         hoverElement = hoverElement.parentElement
-
-    //         /*This is a list of JSON Object containing information about the current image
-    //         Every element in the list corresponds to another image that is similair to the current image.
-    //         The goal is to display the info of these similar images in the 1-D spectrum.*/
-    //         this_img_info = data['images_info'][img_selector][j]            
             
-    //         //Get CSS Selector of image-group
-    //         selector_id = data['images_info'][img_selector][j]['id']
-
-    //         /*Assign a unique ID to the image (hoverable) and pop-up container (to be displayed).
-    //         This is so we can target them with EventListeners and D3.js charts*/
-
-    //         //Make the hoverable image have a unique ID based on its selector and position within selector.
-    //         hoverElement.id = `${selector_id}-${j}`
-
-    //         //This lets the children of hoverElement (dashboardContainer), be displayed on-top of it like a pop-up.
-    //         hoverElement.setAttribute('style', 'position:relative !important');   
+            /*This is a list of JSON Object containing information about the current image
+            Every element in the list corresponds to another image that is similair to the current image.
+            The goal is to display the info of these similar images in the 1-D spectrum.*/
+            this_img_info = data['images_info'][img_selector][j]            
             
-    //         //Create container div to hold D3.js chart
-    //         const dashboardContainer = document.createElement('div');
-    //         dashboardContainer.id = `d3-${hoverElement.id}`;
-    //         dashboardContainer.classList.add("d3-dashboard")
+            //Get CSS Selector of image-group
+            selector_id = data['images_info'][img_selector][j]['id']
+            
+            /*Assign a unique ID to the image (hoverable) and pop-up container (to be displayed).
+            This is so we can target them with EventListeners and D3.js charts*/
+            
+            
+            hoverElement = hoverElement.parentElement
+            //Make the hoverable image have a unique ID based on its selector and position within selector.
+            hoverElement.id = `${selector_id}-${j}`
+            //This lets the children of hoverElement (dashboardContainer), be displayed on-top of it like a pop-up.
+            hoverElement.setAttribute('style', 'position:relative !important');   
+            
+            //Create container div to hold D3.js chart
+            dashboardContainer = document.createElement('div');
+            dashboardContainer.id = `d3-${hoverElement.id}`;
+            dashboardContainer.classList.add("d3-dashboard")
 
             
-    //         //Add EventListeners to inject D3.js chart when hovering on hoverElement
-    //         setDisplayOnHover(
-    //             hoverElement,   /*Element to be hovered on.*/
-    //             dashboardContainer, /*Container Element of pop-up dashboard that will be shown when hoverElement is hovered.*/
-    //             this_img_analytics /*Data for the dashboard to display */
-    //         )
+            //Add EventListeners to inject D3.js chart when hovering on hoverElement
+            setDisplayOnHover(
+                hoverElement,   /*Element to be hovered on.*/
+                dashboardContainer, /*Container Element of pop-up dashboard that will be shown when hoverElement is hovered.*/
+                this_img_info /*Data for the dashboard to display */
+            )
         
-    //     });
-    // }
+        });
+    }
 
     
-    // console.log(data)
+    console.log(data)
 
 
 }
+
+document.addEventListener('mousemove', function(event) {
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+});
 
 
 let data;
@@ -177,7 +253,7 @@ let data;
 let token = '2752a8aef8c313eb3735511fa8a6931e'
 
 //Get API data using current URL
-fetch(`http://10.59.16.3/${token}/?url=${window.location.href}`)
+fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
     .then(res => res.json())
     .then(data => {
 

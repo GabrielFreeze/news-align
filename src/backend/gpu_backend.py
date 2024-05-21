@@ -43,26 +43,29 @@ class GPU_Backend():
     
     def __call__(self,payload:GPU_Payload) -> GPU_Payload:
         s=time()
-        data = {}
+        input_data = {}
+        output_data = {}
         error = ""
         this_job_no = -1
 
         try:    
-            data        = payload.data
+            input_data        = payload.data
             this_job_no = payload.job_no
                        
             #Get similar articles by text
-            similar_topic_articles = self._get_similar_articles_by_text(data)
+            similar_topic_articles = self._get_similar_articles_by_text(input_data)
             
             thumbnail_info = [] #Information about the thumbnail of the article
             
             #Extract thumbnail data from the related articles
             for a in similar_topic_articles:
                 
-                if len(img_ids:=a['img_ids'].split(',')) == 1:
+                if a['img_ids'] == "":
                     #If there are no img_ids, then just skip this similar_topic_article
                     continue
                                 
+                img_ids = a['img_ids'].split(',')
+                
                 thumbnail = self.img_collection.get(
                     ids=img_ids[0], #First img_id is the thumbnail
                 )
@@ -92,29 +95,32 @@ class GPU_Backend():
                                   
                 thumbnail_info.append({
                     #"data": thumbnail_data,
-                    "selector": thumbnail_selector,
-                    "url": a['url'],
+                    "selector" : thumbnail_selector,
+                    "url"      : a['url'],
                     "newspaper": a['newspaper'],
+                    "title"    : a['title'],
                     
                     #Get Thumbnail Similarity Score to Title of article
-                    "title-simil": self._img_text_matching({"data":thumbnail_data, "alt":a['title']})[0],
+                    "title_simil": self._img_text_matching({"data":thumbnail_data, "alt":a['title']})[0],
                     
                     #Get Thumbnail Similarity Score to Body of article
-                    "body-simil": self._img_text_matching({"data":thumbnail_data, "alt":a['body']})[0]
+                    "body_simil": self._img_text_matching({"data":thumbnail_data, "alt":a['body']})[0]
                 })
             
             #                                   ╔═══════════════╗
             #                                   ↓               ║ 
             #Adding the thumbnail of the current article as if it was a similar topic article.
             #                            ^^^^^^^^^^^^^^^       ^^
-            this_thumbnail_data = bytestring2image(data['imgs'][0]['data'])
+            this_thumbnail_data = bytestring2image(input_data['imgs'][0]['data'])
             thumbnail_info.insert(0,{
-                "selector": data['imgs'][0]['css-selector'],
-                "url": data['url'],
-                "newspaper": data['newspaper'],
+                "selector"   : (k:=input_data['imgs'][0]['css-selector']),
+                "selector_id": data2id(k), #I only need the selector_id for the current thumbnail.
+                "url"        : input_data['url'],
+                "newspaper"  : input_data['newspaper'],
+                "title"      : input_data['title'],
                 
-                "title-simil": self._img_text_matching({"data":this_thumbnail_data, "alt":data['title']})[0],
-                "body-simil": self._img_text_matching ({"data":this_thumbnail_data, "alt":data['body']})[0]
+                "title_simil": self._img_text_matching({"data":this_thumbnail_data, "alt":input_data['title']})[0],
+                "body_simil" : self._img_text_matching({"data":this_thumbnail_data, "alt":input_data['body']}) [0]
             })
             
             
@@ -122,7 +128,7 @@ class GPU_Backend():
             s=time()
             
             #Extract image data for every image in the key article
-            similar_image_articles_per_img = self._get_similar_articles_by_images(data,include_self=True)
+            similar_image_articles_per_img = self._get_similar_articles_by_images(input_data,include_self=True)
             
             #Number of keys must be same length as number of images in article
             images_info = {} #Information about the images of the article
@@ -131,51 +137,48 @@ class GPU_Backend():
             
             #Loop through the results of every image in the key article
             for key_img, sim_image_articles_info in zip(
-                data['imgs'], #The image in the article
+                input_data['imgs'], #The image in the article
                 similar_image_articles_per_img #The retrieved images similair to that image
             ):
                 #Will hold the info of the retrieved similar images for this image in the key article
                 this_image_info = []
                 #One image in the key article has multiple similar images
                 for one_sim_img_infos in sim_image_articles_info:
-                    print(one_sim_img_infos.keys())
+
                     #One similar image has multiple occurences. (We need to list these all)
                     for i,article_metadata in enumerate(one_sim_img_infos['article_metadatas']):
                         image_counter += 1
                         #All values in the dictionary that is being appended are single scalar values
                         this_image_info.append({                               # ^^^^^^^^^^^^^^^^^^^^
-                            "caption-simil": self._img_text_matching({
+                            "caption_simil": self._img_text_matching({
                                 "data": one_sim_img_infos['bytestring'],
                                 "alt" : one_sim_img_infos['captions'][i],
                             }),
-                            "gen_txt"  : self._get_gencap(one_sim_img_infos['bytestring']),
-                            "selector" : (k:=one_sim_img_infos['selectors'][i]),
-                            "id"       : data2id(k),
-                            "newspaper": article_metadata['newspaper'],
-                            "url"      : article_metadata['newspaper'],
+                            "gen_txt"      : self._get_gencap(one_sim_img_infos['bytestring']),
+                            "selector"     : (k:=one_sim_img_infos['selectors'][i]),
+                            "selector_id"  : data2id(k),
+                            "newspaper"    : article_metadata['newspaper'],
+                            "url"          : article_metadata['url'],
                         })
                 
                 #Add key_img entry
-                if (img_selector:=key_img['selector']) not in images_info:
+                if (img_selector:=key_img['css-selector']) not in images_info:
                     images_info[img_selector] = []
                 images_info[img_selector].append(this_image_info)
             
             print(f'[{this_job_no}] Similair Articles ({image_counter}) By Images Processed: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
             
-            # print(f'[{this_job_no}] Images Processed: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
-                        
-            #Format data              
-            data = {"thumbnail_info": thumbnail_info,
-                    "images_info"   : images_info}
+            #Format output data              
+            output_data = {"thumbnail_info": thumbnail_info,
+                           "images_info"   : images_info}
                         
         except Exception as e:
             traceback.print_exc()
             error = f"Unexpected Error: {traceback.format_exc()}"
                 
         return GPU_Payload(job_no=this_job_no,
-                           payload=Payload(data=data,error=error))
+                           payload=Payload(data=output_data,error=error))
         
-   
     # TODO: Look up similair articles (by text or image) and use the articles as additional context when calculating the scores
     def _img_text_matching(self,imgs:Union[List[dict],dict]) -> List[dict]:
         
@@ -187,16 +190,22 @@ class GPU_Backend():
             
             #Image Data and Image Alt
             if img['data'] and img['alt']:
-                img_data = self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device)
-                score = self.itm_model({"image":img_data, "text_input": img['alt']}, match_head="itm")
+                
+                if type(img['data']) is str:
+                    img['data'] = bytestring2image(img['data'])
+                                
+                score = self.itm_model({
+                    "image"     : self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device),
+                    "text_input": img['alt']
+                }, match_head="itm")
+                
                 score = softmax(score,dim=1)[:,1].item()
-                img['score'] = score
                             
             else:
-                img['score'] = -1
+                score = -1
                         
             #Add element to result
-            scores.append(img)
+            scores.append(score)
             
         return scores
   
@@ -219,7 +228,7 @@ class GPU_Backend():
                                                       retrieved_images['documents'][0],
                                                       retrieved_images['metadatas'][0]):
                 #TODO: implement a threshold here    
-                if distance > 1500: #Dan in-numru ħareġ minn sormi.
+                if distance > 1000: #Dan in-numru ħareġ minn sormi.
                     continue
             
                 #Include image data
@@ -258,9 +267,7 @@ class GPU_Backend():
                     "captions"  : [img['alt']],
                     "bytestring": img['data']
                 })
-            
-            print(len(img['data']))
-            
+                        
             for sim_img in get_similar_images(img['data']):    
                 
                 #This list contains information on where every sim_img appears.
@@ -300,27 +307,11 @@ class GPU_Backend():
         
         related = []
         
-        # #Include the key article as part of the results.
-        # if include_self: 
-        #     #NOTE: We have to do this because the key article might not be currently indexed by the vectorDB
-        #     key_article_metadatas = {
-        #         "distance" : 0,
-        #         "url"      : data['url'],
-        #         "newspaper": data['newspaper'],
-        #         "title"    : data['title'],
-        #         "body:"    : data['body'],
-                
-        #         #TODO:I am copying the same process in `listener.py`. I should put this in a function
-        #         "img_ids"  : ",".join([
-        #             data2id(img_payload["data"])
-        #             for img_payload in data['imgs']
-        #         ])
-        #     }
-        #     related.append(key_article_metadatas)
-        
         for id,distance,metadata in zip(retrieved_articles['ids'][0],
                                         retrieved_articles['distances'][0],
                                         retrieved_articles['metadatas'][0]):
+            
+            print(distance,metadata['title'])
             
             #If key article and retrieved article do not talk about the same event
             if distance > 0.4:
