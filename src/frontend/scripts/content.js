@@ -3,7 +3,6 @@ function removeDuplicatesByKey(array, key) {
     return array.filter(item => {
         const val = item[key];
         if (seen.has(val)) {
-            console.log(`Filter out ${val}`)
             return false; // This value has already been seen, filter it out
         }
         seen.add(val);
@@ -13,7 +12,6 @@ function removeDuplicatesByKey(array, key) {
 
 // This is the function that will populate `chart-container`
 function displayDashboard(data,dashboardContainerID) {
-
 
     // Remove duplicate entries
     data = removeDuplicatesByKey(data,'url')
@@ -50,12 +48,7 @@ function displayDashboard(data,dashboardContainerID) {
     img_width = document.getElementById(`${data[0].selector_id}-0`).querySelector('img').getAttribute('width')
     
     // Set up SVG dimensions
-    svgWidth=0
-    if (img_width !== null) {
-        svgWidth = img_width
-    } else {
-        svgWidth = 600
-    }
+    const svgWidth = img_width !== null? img_width:600
     const svgHeight = 150;
     const margin = {
                 top:5,
@@ -78,7 +71,58 @@ function displayDashboard(data,dashboardContainerID) {
         .range([margin.left, width+margin.left]);
 
     y_spacing   = 8
-    line_height = (height/2)
+    line_height = height - (height/3)
+
+    //Define marker for arrow
+    svg.append("defs").append("marker")
+       .attr("id", "arrow")
+       .attr("viewBox", "0 0 10 10")
+       .attr("refX", 5)
+       .attr("refY", 5)
+       .attr("markerWidth", 3)
+       .attr("markerHeight", 3)
+       .attr("orient", "auto-start-reverse")
+       .append("path")
+       .attr("d", "M 0 0 L 10 5 L 0 10 z")
+       .attr("fill", "#333");
+
+    // Define the marker for tick
+    svg.append("defs").append("marker")
+                      .attr("id", "tick")
+                      .attr("viewBox", "0 0 10 10")
+                      .attr("refX", 5)
+                      .attr("refY", 5)
+                      .attr("markerWidth", 4)
+                      .attr("markerHeight", 4)
+                      .attr("orient", "auto")
+                      .append("path")
+                      .attr("d", "M 5 0 L 5 10")
+                      .attr("stroke", "#333")
+                      .attr("stroke-width", 2);
+    
+    const imageWidth  = 300
+    const imageHeight = 50
+
+    const imageUrl = chrome.runtime.getURL("images/um-crest-ai.png");  // Get the correct path to the image
+    svg.append("image")
+        .attr("xlink:href", imageUrl)
+        .attr("width", imageWidth)
+        .attr("height", imageHeight)
+        .attr("x", (svgWidth - imageWidth) / 2)       
+        .attr("y", svgHeight - imageHeight - margin.bottom / 2)
+        .attr("preserveAspectRatio", "xMidYMid meet");
+
+
+
+    // Add title
+    svg.append("text")
+       .attr("x", svgWidth/2)       
+       .attr("y", svgHeight/4)     
+       .attr("text-anchor", "middle") 
+       .attr("font-size", "2rem")     
+       .attr("font-weight", "bold")   
+       .attr("fill", "#BA0C2F")     
+       .text("Thumbnail-Title Similarity");       
 
     //Draw spectrum line
     svg.append("line")
@@ -86,8 +130,11 @@ function displayDashboard(data,dashboardContainerID) {
        .attr("y1", line_height)
        .attr("x2", width + margin.left)
        .attr("y2", line_height)
-       .attr("stroke", "#ccc")
-       .attr("stroke-width", 5);
+       .attr("marker-start","url(#tick)")
+       .attr("marker-end","url(#arrow)")
+       .attr("stroke", "#333")
+       .attr("stroke-width", 4);
+
 
     //Add data points on spectrum
     svg.selectAll("circle")
@@ -96,6 +143,9 @@ function displayDashboard(data,dashboardContainerID) {
        .attr("cx", d => xScale(d.score))
        .attr("cy", d => line_height + jitter(d.score)*30)
        .attr("r", 5.5)              //Radius of the circle
+       .attr("fill", d => {
+            return d.url === window.location.href ? "green" : "steelblue"
+        })
        .on("click", (event, d) => {
             window.open(d.url, '_blank'); //Open article in new tab
         })
@@ -117,7 +167,7 @@ function displayDashboard(data,dashboardContainerID) {
     
 
     //Add labels on each data point
-    svg.selectAll("text")
+    svg.selectAll("text.label")
        .data(data)
        .enter().append("text")
        .attr("x", d => xScale(d.score))
@@ -126,12 +176,31 @@ function displayDashboard(data,dashboardContainerID) {
        .attr("text-anchor", "middle")
        .style("font-size", "1rem");
 
+    // dd text boxes at each end of the line
+    svg.append("text")
+       .attr("x", margin.left)
+       .attr("y", height / 2 + margin.top - 10)
+       .attr("text-anchor", "start")
+       .attr("font-size", "12px")
+       .attr("fill", "black")
+       .text("Weak Match")
+       .style("font-size", "1rem");
+   
+       svg.append("text")
+       .attr("x", width + margin.left)
+       .attr("y", height / 2 + margin.top - 10)
+       .attr("text-anchor", "end")
+       .attr("font-size", "12px")
+       .attr("fill", "black")
+       .text("Strong Match")
+       .style("font-size", "1rem");
+
 }
 
 
 async function setDisplayOnHover(hoverElement,dashboardContainer,data) {  
 
-    //Append dashboardContainer as child to hoverElement
+    // Append dashboardContainer as child to hoverElement
     hoverElement.appendChild(dashboardContainer)
     displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
 
@@ -211,7 +280,6 @@ async function onDataFetch(data) {
         const img_selector = keys[i]
         document.querySelectorAll(img_selector).forEach((hoverElement,j) => {
             
-            
             /*This is a list of JSON Object containing information about the current image
             Every element in the list corresponds to another image that is similair to the current image.
             The goal is to display the info of these similar images in the 1-D spectrum.*/
@@ -233,6 +301,9 @@ async function onDataFetch(data) {
             dashboardContainer = document.createElement('div');
             dashboardContainer.id = `d3-${hoverElement.id}`;
             dashboardContainer.classList.add("d3-dashboard")
+            
+
+
 
             //Add EventListeners to inject D3.js chart when hovering on hoverElement
             setDisplayOnHover(

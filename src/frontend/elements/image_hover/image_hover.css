@@ -1,15 +1,18 @@
 div.d3-dashboard {
     all: initial; /* Reset all CSS properties */
     position: absolute; /* Position the container relative to the viewport */
+
+    /* Position at bottom center */
     bottom:0;
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     height:auto;
     width:auto;
-
+ 
     /* background-color: rgba(228, 147, 42, 0.116); */
-    background-color: rgba(228, 147, 42, 0.851);
+    background-color: rgba(189, 195, 199,0.851);
     border-radius: 8px;
-    border: 2px solid #ddd;
+    border: 2px solid #BA0C2F;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 
     display: flex;
@@ -33,7 +36,6 @@ line.tick {
 
 circle {
     position: absolute;
-    fill: steelblue;
     stroke: #333;
     stroke-width: 1.5px;
 }
