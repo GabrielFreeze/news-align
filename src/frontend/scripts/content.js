@@ -15,29 +15,47 @@ function removeDuplicatesByKey(array, key) {
 function displayDashboard(data,dashboardContainerID) {
 
 
+    // Remove duplicate entries
+    data = removeDuplicatesByKey(data,'url')
+    if ("title_simil" in data[0]){
+        for (let i = 0; i < data.length; i++) {
+            data[i]['score'] = data[i]['title_simil']
+        }
+        data = removeDuplicatesByKey(data,'score')
+    } else {
 
-    //TODO:continue here + download extension on  laptop i dont give a shit 
-    //Remove duplicate entries
-    // data = removeDuplicatesByKey(data,'url')
-    // if ("title_simil" in data[0]){
-    //     data = removeDuplicatesByKey(data,'title_simil')
-    // } else {
+        for (let i = 0; i < data.length; i++) {
+            data[i]['score'] = data[i]['caption_simil'][0]
+        }
 
-    //     for (let key in Object.keys(data)) {
-    //         data[key]['caption_simil'] = data[key]['caption_simil'][0]
-    //     }
+        data = removeDuplicatesByKey(data,'score')
 
-
-    //     data = removeDuplicatesByKey(data,'caption_simil')
-    // }
-
-
+    }
+    
+    jitter=(seed) => {
+        let m = 0x80000000; // 2**31;
+        let a = 1103515245;
+        let c = 12345;
+    
+        // Ensure the seed is an integer
+        seed = ((seed-1)*10000000) % m;
+        
+        seed = (a * seed + c) % m;
+        return ((seed*1000)%2? -1:1) * seed / (m - 1);
+        
+    }
 
     console.table(data)
-
-
+      
+    img_width = document.getElementById(`${data[0].selector_id}-0`).querySelector('img').getAttribute('width')
+    
     // Set up SVG dimensions
-    const svgWidth = 700;
+    svgWidth=0
+    if (img_width !== null) {
+        svgWidth = img_width
+    } else {
+        svgWidth = 600
+    }
     const svgHeight = 150;
     const margin = {
                 top:5,
@@ -69,15 +87,15 @@ function displayDashboard(data,dashboardContainerID) {
        .attr("x2", width + margin.left)
        .attr("y2", line_height)
        .attr("stroke", "#ccc")
-       .attr("stroke-width", 1.75);
+       .attr("stroke-width", 5);
 
     //Add data points on spectrum
     svg.selectAll("circle")
        .data(data)
        .enter().append("circle")
-       .attr("cx", d => xScale(d.title_simil))
-       .attr("cy", line_height)   //On line
-       .attr("r", 6.5)              //Radius of the circle
+       .attr("cx", d => xScale(d.score))
+       .attr("cy", d => line_height + jitter(d.score)*30)
+       .attr("r", 5.5)              //Radius of the circle
        .on("click", (event, d) => {
             window.open(d.url, '_blank'); //Open article in new tab
         })
@@ -102,19 +120,9 @@ function displayDashboard(data,dashboardContainerID) {
     svg.selectAll("text")
        .data(data)
        .enter().append("text")
-       .attr("x", d => xScale(d.title_simil))
-       .attr("y", line_height + 20)
-       .text(d => {
-            if ('title_simil' in d) {
-                // console.log("!!")
-                return d.title_simil.toFixed(2)
-            }
-            else {
-                // console.log("??")
-                return d.caption_simil[0].toFixed(2)
-            }
-
-        }) //TODO:
+       .attr("x", d => xScale(d.score))
+       .attr("y", d => 20 + line_height + jitter(d.score)*30)
+       .text(d => d.score.toFixed(2))
        .attr("text-anchor", "middle")
        .style("font-size", "1rem");
 
@@ -197,7 +205,9 @@ async function onDataFetch(data) {
     //Setup 1-D imageInfo spectrum for every image in article (including thumbnail)
     //Loop for every css-selector + image
     const keys = Object.keys(data['images_info'])
-    for (let i=0; i<keys.length; i++) {
+    /*TODO: We are currently ignoring image_info for the first image (thumbnail)
+    as the UI conflicts with the previous 1-d spectrum set above*/
+    for (let i=1; i<keys.length; i++) {
         const img_selector = keys[i]
         document.querySelectorAll(img_selector).forEach((hoverElement,j) => {
             
@@ -208,24 +218,22 @@ async function onDataFetch(data) {
             this_img_info = data['images_info'][img_selector][j]            
             
             //Get CSS Selector of image-group
-            selector_id = data['images_info'][img_selector][j]['id']
+            //The first image is the query image. Hence its selector_id is where the spectrum will be shown
+            selector_id = data['images_info'][img_selector][j][0]['selector_id']
             
             /*Assign a unique ID to the image (hoverable) and pop-up container (to be displayed).
             This is so we can target them with EventListeners and D3.js charts*/
-            
-            
             hoverElement = hoverElement.parentElement
             //Make the hoverable image have a unique ID based on its selector and position within selector.
             hoverElement.id = `${selector_id}-${j}`
             //This lets the children of hoverElement (dashboardContainer), be displayed on-top of it like a pop-up.
             hoverElement.setAttribute('style', 'position:relative !important');   
-            
+
             //Create container div to hold D3.js chart
             dashboardContainer = document.createElement('div');
             dashboardContainer.id = `d3-${hoverElement.id}`;
             dashboardContainer.classList.add("d3-dashboard")
 
-            
             //Add EventListeners to inject D3.js chart when hovering on hoverElement
             setDisplayOnHover(
                 hoverElement,   /*Element to be hovered on.*/
@@ -235,10 +243,6 @@ async function onDataFetch(data) {
         
         });
     }
-
-    
-    console.log(data)
-
 
 }
 

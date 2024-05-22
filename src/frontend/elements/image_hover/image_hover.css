@@ -38,6 +38,10 @@ circle {
     stroke-width: 1.5px;
 }
 
+text {
+    pointer-events: none;
+}
+
 #d3-preview {
     all: initial; /* Reset all CSS properties */
     position: absolute;

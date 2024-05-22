@@ -63,7 +63,7 @@ class ArticleScraper:
             imgs_bytes = [{"data":self.url_to_bytestring(img.attrib['src'],
                                                          return_empty=ignore_imgs),
                            "alt": img.attrib['alt'],
-                           "css-selector": f"div.image img"}
+                           "css-selector": f"div.image img"} 
                           for i,img in enumerate(tree.cssselect('.image img'))]
             
             #Save byte data of slider images
@@ -149,7 +149,7 @@ class ArticleScraper:
                              "url"  :url})
 
     def _scrape_mt(self,url:str,ignore_imgs:bool=False):
-        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com(\.mt)?(\/)*(?:news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
+        if not re.search(r"(?:https?:\/\/)(?:www\.)maltatoday\.com(\.mt)?(\/)*(?:news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
             return Payload(error=f"{url} is not a valid MaltaToday article")
         
         try:

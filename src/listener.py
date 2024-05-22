@@ -109,6 +109,14 @@ while first or not sleep(1*3600):
                             '''In the case of a repeated image, we just want to update the metadata,
                             so we keep track of all articles that featured the image'''
 
+                            #TODO: You are appending the css-selector in order to locate this image,
+                           #however since one css-selector can have multiple images allocated to it,
+                           #you are not recording the position of the image within the css-selector.
+                           #As a result, from the css-selector alone, we only get the position of
+                           #the group of images which our key image is contained in, not the specific position.
+
+
+
                             #Update image in vector database
                             if img_metadata:=img_collection.get(ids=img_id)['metadatas']:
                                 img_metadata = img_metadata[0]
