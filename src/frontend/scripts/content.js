@@ -10,6 +10,17 @@ function removeDuplicatesByKey(array, key) {
     });
 }
 
+function calculateYOffsets(xValues, yOffsetStep) {
+    let yOffsets = new Array(xValues.length).fill(0);
+    for (let i = 1; i < xValues.length; i++) {
+        if (xValues[i] - xValues[i - 1] < 0.05) {
+            yOffsets[i] = (i%2 * 2 -1) * ((Math.abs(yOffsets[i - 1])+yOffsetStep) % (yOffsetStep*3));
+        }
+    }
+    return yOffsets;
+}
+
+
 // This is the function that will populate `chart-container`
 function displayDashboard(data,dashboardContainerID) {
 
@@ -28,37 +39,20 @@ function displayDashboard(data,dashboardContainerID) {
 
         data = removeDuplicatesByKey(data,'score')
 
-    }
-    
-    jitter=(seed) => {
-        let m = 0x80000000; // 2**31;
-        let a = 1103515245;
-        let c = 12345;
-    
-        // Ensure the seed is an integer
-        seed = ((seed-1)*10000000) % m;
-        
-        seed = (a * seed + c) % m;
-        return ((seed*1000)%2? -1:1) * seed / (m - 1);
-        
-    }
+    }    
 
     console.table(data)
-      
-    img_width = document.getElementById(`${data[0].selector_id}-0`).querySelector('img').getAttribute('width')
+    
     
     // Set up SVG dimensions
-    const svgWidth = img_width !== null? img_width:600
+    imgWidth = document.getElementById(`${data[0].selector_id}-0`).querySelector('img').getAttribute('width')
+    const svgWidth = imgWidth !== null? imgWidth:600
     const svgHeight = 150;
-    const margin = {
-                top:5,
-        left:5, /*==*/ right:5,
-               bottom:5
-    };
-
+    const margin = {top:15,left:15,right:15,bottom:15};
     const width  = svgWidth  - margin.left - margin.right;
     const height = svgHeight - margin.top  - margin.bottom;
 
+   
     // Create SVG element
     const svg = d3.select(`#${dashboardContainerID}`)
         .append('svg')
@@ -122,7 +116,9 @@ function displayDashboard(data,dashboardContainerID) {
        .attr("font-size", "2rem")     
        .attr("font-weight", "bold")   
        .attr("fill", "#BA0C2F")     
-       .text("Thumbnail-Title Similarity");       
+       .text("title_simil" in data[0]?
+             "Image-Title Similarity":
+             "Image-Caption Similarity");       
 
     //Draw spectrum line
     svg.append("line")
@@ -135,17 +131,24 @@ function displayDashboard(data,dashboardContainerID) {
        .attr("stroke", "#333")
        .attr("stroke-width", 4);
 
+    //Sort by score
+    data.sort((a, b) => a.score - b.score);
+    //Assign a new variable to d called `y` that will dictate the position of the height point
+    //If two points have a close x value (i.e they will be placed close together), we will make the points
+    xValues = data.map(d => d.score)
+    yOffsets = calculateYOffsets(xValues, 20)
+    for (let i = 0; i < data.length; i++) {
+        data[i]['y'] = yOffsets[i];
+    }
 
     //Add data points on spectrum
     svg.selectAll("circle")
        .data(data)
        .enter().append("circle")
        .attr("cx", d => xScale(d.score))
-       .attr("cy", d => line_height + jitter(d.score)*30)
-       .attr("r", 5.5)              //Radius of the circle
-       .attr("fill", d => {
-            return d.url === window.location.href ? "green" : "steelblue"
-        })
+       .attr("cy", (d,i) => line_height + yOffsets[i])
+       .attr("r", 5.5)
+       .attr("fill", d => d.url === window.location.href ?"green" : "steelblue")
        .on("click", (event, d) => {
             window.open(d.url, '_blank'); //Open article in new tab
         })
@@ -156,7 +159,6 @@ function displayDashboard(data,dashboardContainerID) {
         })
         .on("mousemove", function(event) {
             d3.select("#d3-preview")
-              .style("display", "block")
               .style("left",(mouseX+10)-parent.offsetWidth+ "px")
               .style("top", (mouseY-10)-parent.offsetWidth+ "px");
         })
@@ -171,12 +173,12 @@ function displayDashboard(data,dashboardContainerID) {
        .data(data)
        .enter().append("text")
        .attr("x", d => xScale(d.score))
-       .attr("y", d => 20 + line_height + jitter(d.score)*30)
+       .attr("y", (d,i) => 20 + line_height + yOffsets[i])
        .text(d => d.score.toFixed(2))
        .attr("text-anchor", "middle")
        .style("font-size", "1rem");
 
-    // dd text boxes at each end of the line
+    //Add text boxes at each end of the line
     svg.append("text")
        .attr("x", margin.left)
        .attr("y", height / 2 + margin.top - 10)

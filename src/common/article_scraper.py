@@ -338,7 +338,7 @@ class ArticleScraper:
         while len(img_data := requests.get(url,headers=self.headers).content) <= 146 and time()-t < 10:
             sleep(0.4)
 
-        if len(img_data) <= 146:
+        if len(img_data) <= 1000:
             return ""
 
         #It is important to add the below altchars since we will be passing the bytestring in a URL, and slashes would break it.

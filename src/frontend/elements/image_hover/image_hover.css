@@ -47,8 +47,9 @@ text {
 #d3-preview {
     all: initial; /* Reset all CSS properties */
     position: absolute;
+    pointer-events: none;
+
     top:0;
-    left:0;
     height:auto;
     width:auto;
     background: rgba(122, 64, 230, 0.794);
