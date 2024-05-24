@@ -4,6 +4,11 @@
     "description": "Extension to show bias-indicative results using AI",
     "version": "2024.04.11",
 
+    "permissions": [
+      "http://nbxai.research.um.edu.mt",
+      "activeTab"
+    ],
+
     "action": {
       "default_popup": "elements/default_popup/default_popup.html",
       "default_icon": "images/default_icon.png"
