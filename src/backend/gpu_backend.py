@@ -314,7 +314,7 @@ class GPU_Backend():
             print(distance,metadata['title'])
             
             #If key article and retrieved article do not talk about the same event
-            if distance > 0.4:
+            if distance > 0.45:
                 continue
             
             #If key article and retrieved article are duplicate

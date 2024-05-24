@@ -50,7 +50,7 @@ newsIndexer = NewspaperIndexer()
 artScraper  = ArticleScraper()
 
 #Periodically check newspapers for latest news articles
-while first or not sleep(1*3600):
+while first or not sleep((1*3600)//4):
         
     urls = []
     img_count = 0

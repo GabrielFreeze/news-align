@@ -1,3 +1,7 @@
+function capitalize(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1)
+}
+
 function removeDuplicatesByKey(array, key) {
     const seen = new Set();
     return array.filter(item => {
@@ -155,7 +159,7 @@ function displayDashboard(data,dashboardContainerID) {
         .on("mouseover", (event, d) => {
             d3.select("#d3-preview")
               .style("display", "block")
-              .html(`<p>${d.url}</p>`);
+              .html(`<p>${capitalize(d.newspaper)} - ${d.title}</p>`);
         })
         .on("mousemove", function(event) {
             d3.select("#d3-preview")
@@ -202,26 +206,26 @@ function displayDashboard(data,dashboardContainerID) {
 
 async function setDisplayOnHover(hoverElement,dashboardContainer,data) {  
 
-    // Append dashboardContainer as child to hoverElement
-    hoverElement.appendChild(dashboardContainer)
-    displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
+    // // Append dashboardContainer as child to hoverElement
+    // hoverElement.appendChild(dashboardContainer)
+    // displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
 
 
-    // //Display+Hide rules for hoverElement
-    // hoverElement.addEventListener('mouseenter', () => {
+    //Display+Hide rules for hoverElement
+    hoverElement.addEventListener('mouseenter', () => {
         
-    //     //Append dashboardContainer as child to hoverElement
-    //     hoverElement.appendChild(dashboardContainer)
-    //     displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
-    // });
+        //Append dashboardContainer as child to hoverElement
+        hoverElement.appendChild(dashboardContainer)
+        displayDashboard(data,dashboardContainer.id) //Bring up D3.js dashboard
+    });
 
-    // hoverElement.addEventListener('mouseleave', () => {   
-    //     if (dashboardContainer) { //Iteratively remove all children (dashboard)
-    //         while (child=dashboardContainer.firstChild) {
-    //             dashboardContainer.removeChild(child);
-    //         }
-    //     }
-    // });
+    hoverElement.addEventListener('mouseleave', () => {   
+        if (dashboardContainer) { //Iteratively remove all children (dashboard)
+            while (child=dashboardContainer.firstChild) {
+                dashboardContainer.removeChild(child);
+            }
+        }
+    });
 }
 
 

@@ -2,8 +2,7 @@ div.d3-dashboard {
     all: initial; /* Reset all CSS properties */
     position: absolute; /* Position the container relative to the viewport */
 
-    /* Position at bottom center */
-    bottom:0;
+    bottom: 0;
     left: 50%;
     transform: translateX(-50%);
     height:auto;
@@ -38,6 +37,7 @@ circle {
     position: absolute;
     stroke: #333;
     stroke-width: 1.5px;
+    cursor: pointer;
 }
 
 text {
