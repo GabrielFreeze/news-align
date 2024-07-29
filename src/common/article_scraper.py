@@ -37,7 +37,7 @@ class ArticleScraper:
         try:
             #Get article
             content = requests.get(url,headers=self.headers).content.decode('utf-8')
-            tree = html.fromstring(content)          
+            tree = html.fromstring(content)
 
             #Get Title
             title = tree.xpath('/html/head/title')[0].text
@@ -149,7 +149,7 @@ class ArticleScraper:
                              "url"  :url})
 
     def _scrape_mt(self,url:str,ignore_imgs:bool=False):
-        if not re.search(r"(?:https?:\/\/)(?:www\.)maltatoday\.com(\.mt)?(\/)*(?:news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
+        if not re.search(r"(?:https?:\/\/)(?:www\.)?maltatoday\.com(\.mt)?(\/)*(?:news|environment)\/[a-zA-Z0-9_-]*\/[0-9]{6}\/",url):
             return Payload(error=f"{url} is not a valid MaltaToday article")
         
         try:

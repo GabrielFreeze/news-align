@@ -308,9 +308,6 @@ async function onDataFetch(data) {
             dashboardContainer.id = `d3-${hoverElement.id}`;
             dashboardContainer.classList.add("d3-dashboard")
             
-
-
-
             //Add EventListeners to inject D3.js chart when hovering on hoverElement
             setDisplayOnHover(
                 hoverElement,   /*Element to be hovered on.*/

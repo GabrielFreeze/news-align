@@ -33,7 +33,7 @@ def get_additonal_urls():
             
 first = True
 add_additional = False
-
+ 
 #INITIALISE
 client = chromadb.HttpClient(host="localhost",port=8000)
 
@@ -50,7 +50,7 @@ newsIndexer = NewspaperIndexer()
 artScraper  = ArticleScraper()
 
 #Periodically check newspapers for latest news articles
-while first or not sleep((1*3600)//4):
+while first or not sleep(1*3600):
         
     urls = []
     img_count = 0
@@ -60,7 +60,7 @@ while first or not sleep((1*3600)//4):
         #Download articles
         for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
             
-            to_index = newsIndexer.get_latest_urls(newspaper,latest=30)
+            to_index = newsIndexer.get_latest_urls(newspaper,latest=1000)
             if first and add_additional: to_index += get_additonal_urls()
             
             #Get article URLS
@@ -87,7 +87,6 @@ while first or not sleep((1*3600)//4):
                         print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
                         continue
                         # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
-                        
                     print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
                     
@@ -115,8 +114,6 @@ while first or not sleep((1*3600)//4):
                            #As a result, from the css-selector alone, we only get the position of
                            #the group of images which our key image is contained in, not the specific position.
 
-
-
                             #Update image in vector database
                             if img_metadata:=img_collection.get(ids=img_id)['metadatas']:
                                 img_metadata = img_metadata[0]
@@ -125,7 +122,6 @@ while first or not sleep((1*3600)//4):
                                 if article_id in json.loads(img_metadata['article_ids']):
                                     continue
                 
-
                                 #Add this article_id into the JSON list of article_ids.
                                 img_metadata['article_ids'] = json.dumps(
                                     json.loads(img_metadata['article_ids']) + [article_id]
@@ -179,7 +175,8 @@ while first or not sleep((1*3600)//4):
                             traceback.print_exc()
                     print(f"\n{'='*45}\n")
                         
-                                                
+                    print(document)
+                    print(type(document))
                     #== ADD ARTICLE TO VECTOR DATABASE ==
                     s=time()
                     txt_collection.add(

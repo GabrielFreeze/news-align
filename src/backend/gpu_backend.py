@@ -49,7 +49,7 @@ class GPU_Backend():
         this_job_no = -1
 
         try:    
-            input_data        = payload.data
+            input_data  = payload.data
             this_job_no = payload.job_no
                        
             #Get similar articles by text
@@ -59,7 +59,7 @@ class GPU_Backend():
             
             #Extract thumbnail data from the related articles
             for a in similar_topic_articles:
-                
+
                 if a['img_ids'] == "":
                     #If there are no img_ids, then just skip this similar_topic_article
                     continue
@@ -70,10 +70,13 @@ class GPU_Backend():
                     ids=img_ids[0], #First img_id is the thumbnail
                 )
                 
-                
-                thumbnail_bytestring = thumbnail['documents'][0] or self.backup_scraper.scrape(a['url']).data['imgs'][0]['data']
-                #                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                #If no thumbnail bytestring was found assosciated with the entry, just redownload it
+                if thumbnail['documents']:
+                    thumbnail_bytestring = thumbnail['documents'][0]
+                else:
+                    #TODO: Add thumbnail to vector datbase if img_collection.get() returned empty
+                    continue #TEMP
+                    thumbnail = self.backup_scraper.scrape(a['url']).data
+                    thumbnail_bytestring = thumbnail['imgs'][0]['data']
                 
                 thumbnail_data = bytestring2image(thumbnail_bytestring) #Load image from bytestring
                 

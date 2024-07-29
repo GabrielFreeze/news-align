@@ -24,7 +24,8 @@
                     "elements/image_hover/trigger.js",
                     "elements/image_hover/d3.js",
                     "images/um-crest-ai.png"],
-      "matches":   ["<all_urls>"]}],
+      "matches":   ["<all_urls>"]
+    }],
 
     "content_scripts": [{
           "js": ["scripts/d3.js","scripts/content.js"],
