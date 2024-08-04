@@ -50,7 +50,7 @@ newsIndexer = NewspaperIndexer()
 artScraper  = ArticleScraper()
 
 #Periodically check newspapers for latest news articles
-while first or not sleep(1*3600):
+while first or not sleep(50000*1*3600):
         
     urls = []
     img_count = 0
@@ -60,7 +60,7 @@ while first or not sleep(1*3600):
         #Download articles
         for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
             
-            to_index = newsIndexer.get_latest_urls(newspaper,latest=1000)
+            to_index = newsIndexer.get_latest_urls(newspaper,latest=4500)
             if first and add_additional: to_index += get_additonal_urls()
             
             #Get article URLS
@@ -85,8 +85,9 @@ while first or not sleep(1*3600):
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if article_id in txt_collection.get()['ids']:
                         print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        continue
+                        
                         # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
+                        continue
                     print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
                     
@@ -176,7 +177,7 @@ while first or not sleep(1*3600):
                     print(f"\n{'='*45}\n")
                         
                     print(document)
-                    print(type(document))
+                    
                     #== ADD ARTICLE TO VECTOR DATABASE ==
                     s=time()
                     txt_collection.add(
@@ -187,6 +188,8 @@ while first or not sleep(1*3600):
                             "title"    :data['title'],
                             "img_ids"  :",".join(img_ids), #Add reference to image entries in image database
                             "body"     :data['body'],
+                            "author"   :data['author'],
+                            "date"     :data['date']
                         },
                         
                         #ID is the hashed document, so we can detect any changes in the article.

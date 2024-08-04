@@ -4,7 +4,7 @@ from time import time
 import multiprocessing
 from fastapi import FastAPI
 from common.color import color
-from backend.gpu_backend import GPU_Backend
+from backend.spectrum_backend import GPU_Backend
 from common.payload import Payload,GPU_Payload
 from common.article_scraper import ArticleScraper
 from fastapi.middleware.cors import CORSMiddleware

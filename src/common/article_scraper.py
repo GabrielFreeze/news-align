@@ -41,7 +41,10 @@ class ArticleScraper:
 
             #Get Title
             title = tree.xpath('/html/head/title')[0].text
+            
+            
             script = json.loads(tree.xpath('//*[@id="article-ld"]')[0].text)            
+                   
             
             #There exists multiple versions of a given image.
             #Get all images with the same caption as the first image (the thumbnail)
@@ -72,12 +75,16 @@ class ArticleScraper:
                              "alt": img.cssselect('.caption-text')[0].text,
                              "css-selector":    f"div.swiper-slide img"}
                             for i,img in enumerate(tree.cssselect('.swiper-slide'))]
+                  
+            #Get Author
+            author = script['@graph'][0]['author'][0]['name']
+            print(author)
                                 
             #Get Body
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
 
-            #Get date
-            date = tree.cssselect('meta[property="article:published_time"]')[0].attrib['content']
+            #Get Date
+            date = tree.cssselect('meta[property="article:modified_time"]')[0].attrib['content']
             date = self.format_date(date)
             
         except Exception as e:
@@ -85,10 +92,11 @@ class ArticleScraper:
             return Payload(error=f"Unexpected Error: {repr(e)}")
 
                                 # Join thumbnail and image data    vvv
-        return Payload(data={"title":title,
-                             "imgs" :[thumbnail_bytes]+imgs_bytes+slider_bytes,
-                             "body" :body,
-                             "date" :date,
+        return Payload(data={"title" :title,
+                             "imgs"  :[thumbnail_bytes]+imgs_bytes+slider_bytes,
+                             "body"  :body,
+                             "date"  :date,
+                             "author":author,
                              "newspaper":self.newspaper,
                              "url"  :url})
 
@@ -108,7 +116,7 @@ class ArticleScraper:
             title = tree.cssselect('.title')[0].text
 
             #Get Body
-            body = self.get_nested_text(tree.cssselect('div.content')[0], theshift=True)
+            body = self.get_nested_text(tree.cssselect('div.content')[0])
             body = body.replace("Aqra dan l-artiklu bil-Malti.",'')
             
                                    
@@ -133,18 +141,22 @@ class ArticleScraper:
                     "css-selector": f'{css} img',
                 })
             
-            #Get date
+            #Get Date
             date = tree.cssselect("div.date")[0].text
             date = self.format_date(date)            
+            
+            #Get Author
+            author = tree.cssselect("div.author > a")[0].text
             
         except Exception as e:
             traceback.print_exc()
             return Payload(f"Unexpected Error: {repr(e)}")
         
-        return Payload(data={"title":title,
-                             "imgs" :imgs,
-                             "body" :body,
-                             "date" :date,
+        return Payload(data={"title" :title,
+                             "imgs"  :imgs,
+                             "body"  :body,
+                             "date"  :date,
+                             "author":author,
                              "newspaper":self.newspaper,
                              "url"  :url})
 
@@ -156,6 +168,7 @@ class ArticleScraper:
             content = requests.get(url,headers=self.headers,verify=False).content.decode('utf-8')
             tree = html.fromstring(content)            
 
+            #Get Title
             title = tree.cssselect('#content > section > div > div:nth-child(1) > div > div > div:nth-child(2) > div > div > div > h1')[0].text
             
             #Get Body
@@ -166,11 +179,13 @@ class ArticleScraper:
             except: date = tree.cssselect(".date_last_published")[0].text.replace("Last updated on ","")
             date = self.format_date(date)
             
+            #Get Author
+            author = tree.cssselect("span.name")[0].text
+            
             #Get Images,Captions, and CSS Selector
             #Save byte data of thumbnail
             thumbnail_css = 'div[data-module-name="article_cover"] div.cover-photo'
             thumbnail = tree.cssselect(f'{thumbnail_css} img')[0]
-            
             imgs = [{
                 "data":self.url_to_bytestring("https:"+thumbnail.attrib['src'],
                                               return_empty=ignore_imgs),
@@ -195,10 +210,11 @@ class ArticleScraper:
             traceback.print_exc()
             return Payload(f"Unexpected Error: {repr(e)}")
         
-        return Payload(data={"title":title,
-                             "imgs" :imgs,
-                             "body" :body,
-                             "date" :date,
+        return Payload(data={"title" :title,
+                             "imgs"  :imgs,
+                             "body"  :body,
+                             "date"  :date,
+                             "author":author,
                              "newspaper":self.newspaper,
                              "url"  :url})
     
@@ -208,6 +224,7 @@ class ArticleScraper:
         
         try:
             content = requests.get(url,headers=self.headers,verify=False).content.decode('utf-8')
+
             tree = html.fromstring(content)
                         
             title = tree.cssselect("head > title")[0].text
@@ -218,6 +235,9 @@ class ArticleScraper:
                 tree.cssselect(".date-published")[0].text
             )
             
+            try:    author = tree.cssselect("#ctl00_ArticleDetails_TMI_lblAuthor")[0].text
+            except: author = ""
+            print(author)
             #Thumbnail
             thumbnail_link = tree.cssselect("meta[property='og:image']")[0].attrib['content']
             imgs = [{
@@ -241,10 +261,11 @@ class ArticleScraper:
             traceback.print_exc()
             return Payload(f"Unexpected Error: {repr(e)}")
         
-        return Payload(data={"title":title,
-                             "imgs" :imgs,
-                             "body" :body,
-                             "date" :date,
+        return Payload(data={"title" :title,
+                             "imgs"  :imgs,
+                             "body"  :body,
+                             "date"  :date,
+                             "author":author,
                              "newspaper":self.newspaper,
                              "url"  :url})
     
@@ -261,7 +282,8 @@ class ArticleScraper:
                 tree.cssselect(".td-post-content")[0]
             )
             date  = tree.cssselect("meta[property='article:modified_time']")[0].attrib['content']
-
+            author = tree.cssselect("div.td-post-author-name > a")[0].text
+            
             #Gets the highest resolution image from a srcset
             srcset_to_bytestring = lambda srcset: \
                 self.url_to_bytestring(
@@ -314,20 +336,24 @@ class ArticleScraper:
             traceback.print_exc()
             return Payload(f"Unexpected Error: {repr(e)}")
     
-        return Payload(data={"title":title,
-                             "imgs" :imgs,
-                             "body" :body,
-                             "date" :date,
+        return Payload(data={"title" :title,
+                             "imgs"  :imgs,
+                             "body"  :body,
+                             "date"  :date,
+                             "author":author,
                              "newspaper":self.newspaper,
                              "url"  :url})
         
-    def get_nested_text(self,element:HtmlElement, theshift:bool=False):            
+    def get_nested_text(self,element:HtmlElement):            
         
-        return " ".join(
-            [(child.text or "") + self.get_nested_text(child,theshift) + (child.tail or "")
+        return " ".join([
+            (child.text or "") + self.get_nested_text(child) + (child.tail or "")
             for child in element.iterchildren()
-            if child.tag in ['p','strong','i','b','u','em','a','span' if theshift else ""]]
-        )
+            if child.tag in [
+                'p','strong','i','b','u','em','a',
+                'span' if self.newspaper in ["theshift","independent"] else ""
+            ]
+        ])
         
     def url_to_bytestring(self,url:str,return_empty:bool=False):
         

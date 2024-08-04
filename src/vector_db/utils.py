@@ -1,3 +1,4 @@
+import os
 import json
 import torch
 import requests
@@ -38,9 +39,6 @@ class EmbeddingFunction(_EmbeddingFunction):
     def process_input(self,input):
         raise NotImplementedError("Subclasses must implement `process_input` method")
         
-
-
-
 class ImageEmbeddingFunction(EmbeddingFunction):
     def __init__(self,**kwargs) -> None:
         super().__init__(**kwargs)
@@ -71,7 +69,11 @@ class TextEmbeddingFunction(EmbeddingFunction):
     def __init__(self,**kwargs) -> None:
         super().__init__(**kwargs)
         
-        self.embedding_prompt = "Represent this news article for searching relevant passages about events, people, dates, and facts."
+        # self.embedding_prompt = "Represent this news article for searching relevant passages about events, people, dates, and facts."
+        with open(os.path.join("lm_prompts","retrieval_system_prompt.txt"), "r", encoding='utf-8') as f:
+            
+            self.embedding_prompt = f.read()
+        
         
         if not self.remote:
             self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
