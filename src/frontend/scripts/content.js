@@ -269,13 +269,12 @@ async function onDataFetch(data) {
     previewContainer.id = "d3-preview"
     hoverElement.appendChild(previewContainer)
 
-    // Add EventListeners to inject D3.js chart when hovering on hoverElement
+    //Add EventListeners to inject D3.js chart when hovering on hoverElement
     setDisplayOnHover(
         hoverElement,        /*Element to be hovered on.                                                             */
         dashboardContainer, /*Container Element of pop-up dashboard that will be shown when hoverElement is hovered.*/
         thumbnailInfo      /*Data for the dashboard to display                                                     */
     )
-
 
     //Setup 1-D imageInfo spectrum for every image in article (including thumbnail)
     //Loop for every css-selector + image
@@ -320,11 +319,11 @@ async function onDataFetch(data) {
 
 }
 
+
 document.addEventListener('mousemove', function(event) {
     mouseX = event.clientX;
     mouseY = event.clientY;
 });
-
 
 let data;
 //TODO: Don't hardcode access token.
@@ -339,6 +338,7 @@ fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
             throw new Error(`Error while processing data: ${data['error']}`)
         } 
         
+            /*Entry Point*/
         onDataFetch(data['data'])
         
     })

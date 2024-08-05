@@ -78,7 +78,6 @@ class ArticleScraper:
                   
             #Get Author
             author = script['@graph'][0]['author'][0]['name']
-            print(author)
                                 
             #Get Body
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
@@ -180,7 +179,8 @@ class ArticleScraper:
             date = self.format_date(date)
             
             #Get Author
-            author = tree.cssselect("span.name")[0].text
+            try: author = tree.cssselect("span.name")[0].text
+            except: author = ""
             
             #Get Images,Captions, and CSS Selector
             #Save byte data of thumbnail

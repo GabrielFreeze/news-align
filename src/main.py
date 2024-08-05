@@ -4,11 +4,12 @@ from time import time
 import multiprocessing
 from fastapi import FastAPI
 from common.color import color
-from backend.spectrum_backend import GPU_Backend
+from start_chat import start_chat
 from common.payload import Payload,GPU_Payload
+from backend.spectrum_backend import GPU_Backend
 from common.article_scraper import ArticleScraper
 from fastapi.middleware.cors import CORSMiddleware
-    
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +25,8 @@ job_no:int = 0
 
 queue_1: multiprocessing.Queue = None
 queue_2: multiprocessing.Queue = None       
+model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
+revision = "main"    
 
 @app.get(f"/")
 def root() -> dict:
@@ -76,7 +79,11 @@ def endpoint(url:str="") -> dict:
         #Make sure the output we retrieved is the one produced by our payload.
         while (return_payload:=queue_2.get()).job_no != this_job_no and not return_payload.error:
             print(return_payload.error)
-            queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume            
+            queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume                 
+        
+        
+        
+        print(return_payload['thumbnail_info'])
         
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
                 
@@ -85,8 +92,13 @@ def endpoint(url:str="") -> dict:
     except Exception as e:
         traceback.print_exc()
         return Payload(error=traceback.format_exc(),data={}).to_dict()
-    
-    
+
+
+#TODO: Check ChatGpt chats I have. There is a way to pass get parameters to a GradioSession.
+# From Javascript I will call my gradio session by embedding it in the webpage,
+# and I will call it with the ids of the context articles as the GET parameters.
+# So the front end is the bridge between these two servers.
+
     
 #Spin new thread and send data to GPU when received
 def gpu_proc(queue_1:multiprocessing.Queue,

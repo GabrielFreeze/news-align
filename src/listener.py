@@ -50,7 +50,7 @@ newsIndexer = NewspaperIndexer()
 artScraper  = ArticleScraper()
 
 #Periodically check newspapers for latest news articles
-while first or not sleep(50000*1*3600):
+while first or not sleep(1*3600):
         
     urls = []
     img_count = 0
@@ -60,7 +60,7 @@ while first or not sleep(50000*1*3600):
         #Download articles
         for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
             
-            to_index = newsIndexer.get_latest_urls(newspaper,latest=4500)
+            to_index = newsIndexer.get_latest_urls(newspaper,latest=30)
             if first and add_additional: to_index += get_additonal_urls()
             
             #Get article URLS

@@ -4,23 +4,18 @@ import chromadb
 from typing import List
 from random import randint
 from threading import Thread
+from common.color import color
 from datetime import datetime as dt
-# from auto_gptq import exllama_set_max_input_length
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteria, \
                          StoppingCriteriaList, TextIteratorStreamer
-from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, format_document                         
+from vector_db.utils import TextEmbeddingFunction
+
 
 
 class GlobalBackend:
-    def __init__(self,
-                 model_id:str,
-                 hf_token:str,
-                 revision:str='main',
-                 exllama:bool=True):
-        
-        self.default_from_yr = 2024
-        self.default_to_yr   = 2024
+    def __init__(self,model_id:str,revision:str='main',exllama:bool=True):
+                
         self.default_src_thresh = 0.68
 
         self.device = f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu'
@@ -29,6 +24,13 @@ class GlobalBackend:
         #Load Retrieval Model & Related
         self.retrieval_model = SentenceTransformer("nomic-ai/nomic-embed-text-v1",trust_remote_code=True,device='cpu')
 
+        if "HF_TOKEN" in os.environ:
+            hf_token = os.environ["HF_TOKEN"]
+        else:
+            hf_token = ""
+            print(f'{color.YELLOW}HuggingFace token not set!\n{color.ESC} Powershell:{color.BLUE} $env:HF_TOKEN="<YOUR_TOKEN>"{color.ESC}')
+        
+        
         self.model     = AutoModelForCausalLM.from_pretrained(model_id,device_map=self.device,token=hf_token,
                                                               torch_dtype=torch.float16,
                                                               offload_folder="offload", revision=revision)
@@ -56,7 +58,6 @@ class SessionBackend:
         self.retrieved_EmbDocs = []
 
         self.vector_db_manager = VectorDB_Manager(vectorDB_name=vectorDB_name)
-        self.vector_db_manager.update_range(2024,2024)
         self.url_sources = set() #This will contain current extracted sources
         self.source_header = """<div style="text-align: center; font-size: 24px;">Sources</div>"""        
 
@@ -77,7 +78,9 @@ class SessionBackend:
 
         #Extract the user-inputted prompt
         prompt_query = history[-1][0]
+        #TODO: I need to not use the user prompt for searching for context, but use the current article.
         results = self.vector_db_manager.search(prompt_query,n_results=k)
+        
         #TODO: The context articles are already retrieved: They are the points on the spectrum shown on the thumbnail. 
         #Find a way to put them here
         #I'm thinking I will communicate with the chat part and the webext part via an API in order to retrieve
@@ -279,61 +282,10 @@ class VectorDB_Manager:
         
         
         self.cos = torch.nn.CosineSimilarity(dim=0) #To calculate cosine similarity between embeddings     
-        self.from_yr = from_yr
-        self.to_yr   = to_yr
 
-        self.MIN_YR = 2018
-        self.MAX_YR = 2024
+    def search(self,query):       
+        raise NotImplementedError()
 
-        self.yr_range:List[int] = list(range(from_yr ,to_yr+1))
-    
-    
-    def search(self,query,n_results:int=40):
-        
-        date = augment_date(dt.today().strftime('%d-%m-%Y'))
-        
-        
-        
-        
-        
-        #Get most relevant articles
-        retrieved_docs = self.vector_db.query(
-            query_texts=f"Date: {date}\nsearch_query:{query}", #Adding `search_query` improves performance on NomicAI
-            n_results=n_results*2,
-        )
-        
-        
-        valid_ids = []
-        for i,id in enumerate(retrieved_docs[0]['ids']):
-            
-            this_doc = retrieved_docs['metadatas'][0][i]
-            unix_time = dt.strptime(this_doc['date'], "%d-%m-%Y").timestamp()
-            
-            
-            pass
-            
-        
-        
-        #TODO:Only consider articles published 6 months before/after query article
-        
-        # print(retrieved_docs['metadatas'])
-
-    
-
-        #Return top 40 most relevant documents        
-        return retrieved_docs
-
-    def update_range(self,from_yr,to_yr):        
-        
-        #Update new year ranges
-        self.from_yr = from_yr
-        self.to_yr   = to_yr
-
-        #Get indices
-        self.yr_range = list(range(from_yr ,to_yr+1))
-
-        return
-     
 class StopOnTokens(StoppingCriteria):
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:       
 
