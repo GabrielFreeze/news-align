@@ -367,6 +367,7 @@ fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
         setThumbnailInfoPopUp(data['data'])
 
         //Prepare chatbot pop-up
+        setChatbotPopUp(data['data'])
         
     })
     .catch(error => {
