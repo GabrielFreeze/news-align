@@ -116,7 +116,7 @@ class GPU_Backend():
             #                            ^^^^^^^^^^^^^^^       ^^
             this_thumbnail_data = bytestring2image(input_data['imgs'][0]['data'])
             thumbnail_info.insert(0,{
-                "id"         : a['id'],
+                "id"         : input_data['id'],
                 "selector"   : (k:=input_data['imgs'][0]['css-selector']),
                 "selector_id": data2id(k), #I only need the selector_id for the current thumbnail.
                 "url"        : input_data['url'],

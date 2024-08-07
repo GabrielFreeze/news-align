@@ -325,21 +325,23 @@ async function setChatbotPopUp(data) {
     //Fetch HTML file for chatbot pop-up
     response = await fetch(chrome.runtime.getURL(f='elements/chatbot/chatbot.html'));
     if (!response.ok) throw new Error(`Failed to fetch ${f}`);
-    chatbot_html = await response.text()
+    chatbotHtml = await response.text()
 
     var chatbotHead = document.createElement("chatbot-head")
-    chatbotHead.textContent = chatbot_html
+    chatbotHead.innerHTML = chatbotHtml
     
+    context_articles = removeDuplicatesByKey(data['thumbnail_info'],'url')
 
     //Pass the context article IDs to the chatbot, so it can use the articles for context
-    let queryString = data['thumbnailInfo'][0].map(context_article =>
-        `ids=${encodeURIComponent(context_article.id)}`
+    let queryString = context_articles.map(context_article =>
+        `ids=${encodeURIComponent(context_article['id'])}`
     ).join('&');
     //TODO: Consider maybe passing the ids as a POST parameter in order to not have a very long URL
-    let embedded_url = `http://nbxai.research.um.edu.mt:8080/?${queryString}`
-
+    //TODO: I should use a domain instead of a URL
+    let embedded_url = `http://10.59.16.3:81/?${queryString}`
+    
     //Set the URL of the iframe
-    chatbotHead.querySelector("iframe#chatbot").src = embedded_url
+    chatbotHead.querySelector("#chatbot").src = embedded_url
     document.body.appendChild(chatbotHead)
 
 }
@@ -368,7 +370,6 @@ fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
 
         //Prepare chatbot pop-up
         setChatbotPopUp(data['data'])
-        
     })
     .catch(error => {
         console.error('Error fetching data:', error);

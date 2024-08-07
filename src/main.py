@@ -62,6 +62,10 @@ def endpoint(url:str="") -> dict:
         payload:Payload = artScraper.scrape(url)
         print(f'[{this_job_no}] Scraping finished: {color.GREEN}{round(time()-s,2)}s{color.ESC}')
           
+        #TODO:Add current article to vector_db, if not available
+          
+          
+          
         #Don't invoke job if error in scraping
         if payload.error:
             return payload.to_dict()
