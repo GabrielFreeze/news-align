@@ -1,0 +1,13 @@
+div.chatbot-container {
+    
+    width: 300px;
+    height: 400px;
+    margin: 0;
+    padding: 0;
+}
+
+#chatbot {
+    width: 100%;
+    height: 100%;
+    border: none;
+}

@@ -5,9 +5,8 @@ import requests
 import numpy as np
 from PIL import Image
 import torch.nn.functional as F
-from common.payload import bytestring2image
+from common.payload import bytestring2image,data2id
 from transformers import AutoTokenizer, AutoModel
-from lavis.models import load_model_and_preprocess
 from chromadb import Embeddings, EmbeddingFunction as _EmbeddingFunction
 
 class EmbeddingFunction(_EmbeddingFunction):    
@@ -44,6 +43,8 @@ class ImageEmbeddingFunction(EmbeddingFunction):
         super().__init__(**kwargs)
         
         if not self.remote:
+            #Import is here so when TextEmbeddingFunction is imported lavis is not a dependency
+            from lavis.models import load_model_and_preprocess 
             self.model, self.vis_processors, self.txt_processors = (
                 load_model_and_preprocess(name="blip2_feature_extractor",model_type="pretrain",is_eval=True,device=self.device)
             )
@@ -106,11 +107,11 @@ def format_document(payload_data:dict,query:bool=False):
     captions = json.dumps([img['alt'] or "" for img in payload_data['imgs']])
     return f"search_{['document','query'][query]}:{payload_data['title']}. {payload_data['body']}. {captions}"
 
-def get_similar_articles_by_text(vectordb, data:dict):
+def get_similar_articles_by_text(self, data:dict):
            
         #Get top-k similar articles
         search_doc = format_document(data,query=True)
-        retrieved_articles = vectordb.query(
+        retrieved_articles = self.text_collection.query(
             query_texts=search_doc,
             n_results=15,
         )

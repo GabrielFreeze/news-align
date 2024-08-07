@@ -6,12 +6,11 @@ from random import randint
 from threading import Thread
 from common.color import color
 from datetime import datetime as dt
-from sentence_transformers import SentenceTransformer
-from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteria, \
-                         StoppingCriteriaList, TextIteratorStreamer
 from vector_db.utils import TextEmbeddingFunction
+from sentence_transformers import SentenceTransformer
+from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteria, StoppingCriteriaList, TextIteratorStreamer
 
-
+                        
 
 class GlobalBackend:
     def __init__(self,model_id:str,revision:str='main',exllama:bool=True):
@@ -30,19 +29,22 @@ class GlobalBackend:
             hf_token = ""
             print(f'{color.YELLOW}HuggingFace token not set!\n{color.ESC} Powershell:{color.BLUE} $env:HF_TOKEN="<YOUR_TOKEN>"{color.ESC}')
         
+        #Vector Database client used to retrieve context documents
+        chromadb_client = chromadb.HttpClient(host="localhost",port=8000)
+        txt_fn = TextEmbeddingFunction(remote=True)
+        self.vector_db = chromadb_client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
         
+        #Chat Model
         self.model     = AutoModelForCausalLM.from_pretrained(model_id,device_map=self.device,token=hf_token,
-                                                              torch_dtype=torch.float16,
-                                                              offload_folder="offload", revision=revision)
+                                                              torch_dtype=torch.float16,offload_folder="offload", revision=revision)
         
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id,device_map=self.device,token=hf_token, use_fast=True,
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id,device_map=self.device,token=hf_token,use_fast=True,
                                                        torch_dtype=torch.float16,offload_folder="offload")
 
-        if exllama:
-            self.model = exllama_set_max_input_length(self.model, max_input_length=100_000)
                   
 class SessionBackend:
-    def __init__(self, vectorDB_name:str="vector_db"):
+    def __init__(self):
+        
         #Load device
         self.device = f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu'
         print(f"Device: {self.device}")
@@ -50,18 +52,23 @@ class SessionBackend:
         self.stop_generation = False
         self.generate_kwargs = dict() # Holds input+hyperparameters to invoke model generation
         self.streamer = None
+        self.context_str = ""
+        
         self.system_prompt = ""
         with open(os.path.join("lm_prompts","chat_system_prompt.txt"), "r") as f:
             self.system_prompt = f.read()
         
-        self.previous_documents = ""
-        self.retrieved_EmbDocs = []
-
-        self.vector_db_manager = VectorDB_Manager(vectorDB_name=vectorDB_name)
-        self.url_sources = set() #This will contain current extracted sources
-        self.source_header = """<div style="text-align: center; font-size: 24px;">Sources</div>"""        
 
         return
+    
+    def set_context_docs(self,ids:List, g_bk:GlobalBackend):
+        context_docs = g_bk.vector_db.get(ids)['metadatas']
+        #This string is prepended to the chat history so the LLM has context about the articles
+        self.context_str = "".join([self.format_sources(doc) for doc in context_docs])
+        
+        if self.context_str == "":
+            print(f'{color.RED}GET parameters context IDs could not be parsed {color.ESC}')
+        
     
     def update_range(self,from_yr,to_yr):
         return self.vector_db_manager.update_range(from_yr,to_yr)
@@ -73,54 +80,11 @@ class SessionBackend:
                f"URL: {source.url}\n"          + \
                f"Author: {source.author}\n"    + \
                f"News Article: {source.body}\n\n"
-
-    def get_context(self,history,retrieval_model,k:int=20):
-
-        #Extract the user-inputted prompt
-        prompt_query = history[-1][0]
-        #TODO: I need to not use the user prompt for searching for context, but use the current article.
-        results = self.vector_db_manager.search(prompt_query,n_results=k)
-        
-        #TODO: The context articles are already retrieved: They are the points on the spectrum shown on the thumbnail. 
-        #Find a way to put them here
-        #I'm thinking I will communicate with the chat part and the webext part via an API in order to retrieve
-        #the related articles. So here, I need to call the web-ext to give me the related articles.
-        #I think its easier to do this instead of integrating both systems so I don't have to code additional logic in the 
-        #frontend, as well as I can keep using gradio and then embed gradio as a popup on the web interface.
-        
-        #Extract meta-data from retrieved items
-        context_str = ""
-        urls = []
-        print('\n\DOCS:\n')
-
-        #Format top k relevant results
-        for i,m in enumerate(results[::-1]):
-            
-            score = m.distance
-            
-            # score = (self.vector_db_manager
-            #              .cos(rtrv_emb := torch.tensor(m.embedding, device=self.device),
-            #                   torch.tensor(q_emb, device=self.device))
-            #              .detach()
-            #              .item())
-
-            #This variable should really be a hyper-parameter
-            if score < 0.62:
-                continue
-            
-            context_str += self.format_sources(m)
-            self.retrieved_EmbDocs.append(m)
-            print(f'{m.date} - {m.title} - {round(score,2)}')
-            
-        print('\n\n')
-        
-        return context_str
     
     def format_input(self,history,retrieval_model):
 
         #Augment latest user query with related news articles
-        #Also pass top 3 previously retrieved sources to help with relevance.
-        current_documents = self.previous_documents + self.get_context(history,retrieval_model)
+        
 
         # chat_history = ""
         # last=len(history)-1
@@ -140,10 +104,10 @@ class SessionBackend:
 
         
         messages = []
-        #First start with the system prompt and the retrieved news articles
+        #First start with the system prompt and the retrieved context news articles
         messages = [{
             "role":"system",
-            "content":f"{self.system_prompt}\nNews Articles:\n{current_documents}"
+            "content":f"{self.system_prompt}\nNews Articles:\n{self.context_str}"
         }]
         
         last=len(history)-1
@@ -212,79 +176,8 @@ class SessionBackend:
             history[-1][1] += token
             yield history
 
-    def display_sources(self, thresh):
-        return self.source_header + \
-               '<div style="font-size: 15px;">'+ \
-               "<br>".join([f'<a href="{url}" target=”_blank”>{title}</a>'
-                            for url,title,score in self.url_sources if score >= thresh]) + \
-               '</div>'
 
-    def update_sources(self,history,thresh,
-                       retrieval_model:SentenceTransformer):
 
-        new_url_sources = []
-
-        #Calculate cosine similarity between last response and documents
-        #..to find out which documents the AI actually used
-        #TODO: I don't know if there is a better approach to do this.
-        rsp_emb = torch.tensor(retrieval_model.encode(history[-1][1]), device=self.device)
-
-        for m in self.retrieved_EmbDocs:
-            similarity = self.vector_db_manager.cos(
-                            torch.tensor(m.embedding, device=self.device),
-                            rsp_emb
-                        )
-
-            new_url_sources.append((m,similarity))
-
-            
-        #Filter previously retrieved documents with only the top 3 similair sources.
-        to_add = sorted(new_url_sources,reverse=True,key=lambda x: x[1].detach().cpu())[:3]
-        #TODO: This is dumb vvv
-        try:
-            self.previous_documents += self.format_sources(to_add[0][0])
-            self.previous_documents += self.format_sources(to_add[1][0])
-            self.previous_documents += self.format_sources(to_add[2][0])
-        except:
-            pass
-
-        #Format url_sources in set and remove similarity scores
-        new_url_sources = set([(m.url,m.title,score) for m,score  in new_url_sources])
-
-        #This is so fucking janky bro        vv
-        self.url_sources |= {(f"{randint(0,10e10)}","\n",
-                              torch.tensor(1.0,device=self.device))} | new_url_sources 
-
-        #Update sourceBox with new sources based on the threshold
-        return self.display_sources(thresh)
-
-    def reset(self):
-        self.previous_documents = ""
-        self.retrieved_EmbDocs = []
-        self.url_sources = set()
-
-        with open("chat_system_prompt.txt", "r") as f:
-            self.system_prompt = f.read()
-
-        return
-
-class VectorDB_Manager:
-    def __init__(self,vectorDB_name:str='text_collection',
-                 from_yr:int=2023,to_yr:int=2024):
-        
-        self.device = f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu'
-
-        self.vectorDB_name = vectorDB_name
-
-        client = chromadb.HttpClient(host="localhost",port=8000)
-        txt_fn = TextEmbeddingFunction(remote=True)
-        self.vector_db = client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
-        
-        
-        self.cos = torch.nn.CosineSimilarity(dim=0) #To calculate cosine similarity between embeddings     
-
-    def search(self,query):       
-        raise NotImplementedError()
 
 class StopOnTokens(StoppingCriteria):
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:       

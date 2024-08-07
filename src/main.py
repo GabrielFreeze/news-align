@@ -4,7 +4,6 @@ from time import time
 import multiprocessing
 from fastapi import FastAPI
 from common.color import color
-from start_chat import start_chat
 from common.payload import Payload,GPU_Payload
 from backend.spectrum_backend import GPU_Backend
 from common.article_scraper import ArticleScraper
@@ -82,9 +81,6 @@ def endpoint(url:str="") -> dict:
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume                 
         
         
-        
-        print(return_payload['thumbnail_info'])
-        
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
                 
         return return_payload.to_dict()
@@ -92,12 +88,6 @@ def endpoint(url:str="") -> dict:
     except Exception as e:
         traceback.print_exc()
         return Payload(error=traceback.format_exc(),data={}).to_dict()
-
-
-#TODO: Check ChatGpt chats I have. There is a way to pass get parameters to a GradioSession.
-# From Javascript I will call my gradio session by embedding it in the webpage,
-# and I will call it with the ids of the context articles as the GET parameters.
-# So the front end is the bridge between these two servers.
 
     
 #Spin new thread and send data to GPU when received

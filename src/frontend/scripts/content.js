@@ -229,8 +229,8 @@ async function setDisplayOnHover(hoverElement,dashboardContainer,data) {
 }
 
 
-//Code to execute upon a successful API return
-async function onDataFetch(data) {
+//SetUp ThumbnaiInfo 1D Spectrum upon a successful API return
+async function setThumbnailInfoPopUp(data) {
     
     //Fetch HTML, CSS, and JS files for pop-up dashboard    
     response = await fetch(chrome.runtime.getURL(f='elements/image_hover/image_hover.html'));
@@ -319,6 +319,31 @@ async function onDataFetch(data) {
 
 }
 
+//Prepare chatbot pop-up
+async function setChatbotPopUp(data) {
+    
+    //Fetch HTML file for chatbot pop-up
+    response = await fetch(chrome.runtime.getURL(f='elements/chatbot/chatbot.html'));
+    if (!response.ok) throw new Error(`Failed to fetch ${f}`);
+    chatbot_html = await response.text()
+
+    var chatbotHead = document.createElement("chatbot-head")
+    chatbotHead.textContent = chatbot_html
+    
+
+    //Pass the context article IDs to the chatbot, so it can use the articles for context
+    let queryString = data['thumbnailInfo'][0].map(context_article =>
+        `ids=${encodeURIComponent(context_article.id)}`
+    ).join('&');
+    //TODO: Consider maybe passing the ids as a POST parameter in order to not have a very long URL
+    let embedded_url = `http://nbxai.research.um.edu.mt:8080/?${queryString}`
+
+    //Set the URL of the iframe
+    chatbotHead.querySelector("iframe#chatbot").src = embedded_url
+    document.body.appendChild(chatbotHead)
+
+}
+
 
 document.addEventListener('mousemove', function(event) {
     mouseX = event.clientX;
@@ -338,8 +363,10 @@ fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
             throw new Error(`Error while processing data: ${data['error']}`)
         } 
         
-            /*Entry Point*/
-        onDataFetch(data['data'])
+        //Prepare thumbnail pop-up
+        setThumbnailInfoPopUp(data['data'])
+
+        //Prepare chatbot pop-up
         
     })
     .catch(error => {
