@@ -1,12 +1,16 @@
 import os
 import json
+import time
 import torch
+import chromadb
 import requests
+import traceback
 import numpy as np
 from PIL import Image
+from common.color import color
 import torch.nn.functional as F
-from common.payload import bytestring2image,data2id
 from transformers import AutoTokenizer, AutoModel
+from common.payload import bytestring2image,data2id
 from chromadb import Embeddings, EmbeddingFunction as _EmbeddingFunction
 
 class EmbeddingFunction(_EmbeddingFunction):    
@@ -50,13 +54,14 @@ class ImageEmbeddingFunction(EmbeddingFunction):
             )
             self.model.eval()
         
-
     def process_input(self, input) -> Embeddings:
 
         if type(input) is str:
             input = bytestring2image(input)
         elif type(input) is np.ndarray:
             input = Image.fromarray(input)
+        elif type(input) is list: #TODO: This line is causing an error I think.
+            input = Image.fromarray(np.array(input))
         
         embedding = self.model.extract_features({
                 "image"     : self.vis_processors["eval"](input).unsqueeze(0).to(self.device),
@@ -228,3 +233,125 @@ def get_similar_articles_by_images(self,data:dict,
         )
     
     return articles_per_img
+
+
+
+def add_article(data:dict,
+                txt_collection:chromadb.Collection,
+                img_collection:chromadb.Collection):
+    
+    # == GET ARTICLE ID ==
+    document = format_document(data)
+    #Encode entire payload. If id is different, then the article is new/(was updated).
+    article_id = data2id(data)
+    
+    #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
+    if article_id in txt_collection.get()['ids']:
+        print(f"{color.YELLOW}Article is non-unique... Skipping{color.ESC}",end='\r')
+        
+        # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
+        return article_id
+    print(f"[{data['newspaper']}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
+    img_ids = []
+    
+    #== ADD IMAGES TO VECTOR DATABASE ==
+    for i,img_payload in enumerate(data['imgs']):
+        try:
+            txt = img_payload['alt'] or ""
+            byte_string = img_payload["data"]
+            selector = img_payload['css-selector']
+            
+            if byte_string == "":
+                print(f"{color.YELLOW}Image data is empty... Skipping{color.ESC}")
+                continue
+
+            img_id = data2id(byte_string)
+            img_ids.append(img_id) #Keep track of ALL image_ids of the current article
+            
+            '''In the case of a repeated image, we just want to update the metadata,
+            so we keep track of all articles that featured the image'''
+
+            #TODO: You are appending the css-selector in order to locate this image,
+            #however since one css-selector can have multiple images allocated to it,
+            #you are not recording the position of the image within the css-selector.
+            #As a result, from the css-selector alone, we only get the position of
+            #the group of images which our key image is contained in, not the specific position.
+
+            #Update image in vector database
+            if img_metadata:=img_collection.get(ids=img_id)['metadatas']:
+                img_metadata = img_metadata[0]
+                
+                #We have already recorded this image in this article, so we don't need to update
+                if article_id in json.loads(img_metadata['article_ids']):
+                    continue
+
+                #Add this article_id into the JSON list of article_ids.
+                img_metadata['article_ids'] = json.dumps(
+                    json.loads(img_metadata['article_ids']) + [article_id]
+                )
+                
+                #Add this current caption (txt) into the JSON list of captions.
+                img_metadata['captions'] = json.dumps(
+                    json.loads(img_metadata['captions']) + [txt]
+                )
+                
+                #Add this image selector into the JSON list of selectors.
+                img_metadata['selectors'] = json.dumps(
+                    json.loads(img_metadata['selectors']) + [selector]
+                )
+                
+                #Update the entry
+                img_collection.update(
+                    ids=img_id,
+                    metadatas=img_metadata
+                )
+
+            else:
+                #Add image to vector database
+                img_collection.add(
+
+                    documents=byte_string,
+                    
+                    #NOTE: I think I don't need to supply the embeddings since img_fn is applied to documents automatically.
+                    #However at this point in time [11:13AM 8-8-2024] I still haven't confirmed it yet.
+                    # embeddings=img_fn(byte_string),
+                    
+                    #Adding the current caption, url and css-selector to the metadata.
+                    
+                    #TEMP:We put every field in a json.dumps([]) because the image
+                    #might have multiple article_ids/captions/selectors across different articles
+                    #TODO:Make another table
+                    metadatas={
+                        #Add reference to article entry in article database
+                        "article_ids": json.dumps([article_id]),
+                        "captions"   : json.dumps([txt]),
+                        "selectors"  : json.dumps([selector]),
+                    },
+                    
+                    #ID is the hashed img.
+                    ids=img_id
+                )
+                
+        except Exception as e:
+            traceback.print_exc()
+            return False
+    print(f"\n{'='*45}\n")
+            
+    #== ADD ARTICLE TO VECTOR DATABASE ==
+    txt_collection.add(
+        documents=document,
+        metadatas={
+            "newspaper":data['newspaper'],
+            "url"      :data['url'],
+            "title"    :data['title'],
+            "img_ids"  :",".join(img_ids), #Add reference to image entries in image database
+            "body"     :data['body'],
+            "author"   :data['author'],
+            "date"     :data['date']
+        },
+        
+        #ID is the hashed document, so we can detect any changes in the article.
+        ids=article_id
+    )
+    
+    return article_id

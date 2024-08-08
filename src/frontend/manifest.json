@@ -23,6 +23,7 @@
                     "elements/image_hover/image_hover.js",
                     "elements/image_hover/trigger.js",
                     "elements/chatbot/chatbot.html",
+                    "elements/chatbot/chatbot.css",
                     "elements/image_hover/d3.js",
                     "images/um-crest-ai.png"],
       "matches":   ["<all_urls>"]

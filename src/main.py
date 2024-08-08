@@ -64,8 +64,6 @@ def endpoint(url:str="") -> dict:
           
         #TODO:Add current article to vector_db, if not available
           
-          
-          
         #Don't invoke job if error in scraping
         if payload.error:
             return payload.to_dict()

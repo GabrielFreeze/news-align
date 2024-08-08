@@ -42,7 +42,7 @@ txt_fn = TextEmbeddingFunction(remote=True)
 txt_collection = client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
 
 #Initialise Image Vector Database
-img_fn = ImageEmbeddingFunction() 
+img_fn = ImageEmbeddingFunction()
 img_collection = client.get_or_create_collection(name="img_collection",embedding_function=img_fn)
 
 #Initialise objects to retrieve+download latest news articles
@@ -109,7 +109,7 @@ while first or not sleep(1*3600):
                             '''In the case of a repeated image, we just want to update the metadata,
                             so we keep track of all articles that featured the image'''
 
-                            #TODO: You are appending the css-selector in order to locate this image,
+                           #TODO: You are appending the css-selector in order to locate this image,
                            #however since one css-selector can have multiple images allocated to it,
                            #you are not recording the position of the image within the css-selector.
                            #As a result, from the css-selector alone, we only get the position of
@@ -151,8 +151,9 @@ while first or not sleep(1*3600):
 
                                     documents=byte_string,
                                     
-                                    #img_fn automatically converts bytestring to Image
-                                    embeddings=img_fn(byte_string),
+                                    #NOTE: I think I don't need to supply the embeddings since img_fn is applied to documents automatically.
+                                    #However at this point in time [11:13AM 8-8-2024] I still haven't confirmed it yet.
+                                    # embeddings=img_fn(byte_string),
                                     
                                     #Adding the current caption, url and css-selector to the metadata.
                                     
@@ -175,9 +176,7 @@ while first or not sleep(1*3600):
                         except Exception as e:
                             traceback.print_exc()
                     print(f"\n{'='*45}\n")
-                        
-                    print(document)
-                    
+                                            
                     #== ADD ARTICLE TO VECTOR DATABASE ==
                     s=time()
                     txt_collection.add(
@@ -216,3 +215,5 @@ while first or not sleep(1*3600):
             
     except Exception as e:
         traceback.print_exc()
+        
+        

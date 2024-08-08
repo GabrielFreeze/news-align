@@ -322,11 +322,21 @@ async function setThumbnailInfoPopUp(data) {
 //Prepare chatbot pop-up
 async function setChatbotPopUp(data) {
     
-    //Fetch HTML file for chatbot pop-up
+    //Fetch HTML,CSS file for chatbot pop-up
     response = await fetch(chrome.runtime.getURL(f='elements/chatbot/chatbot.html'));
     if (!response.ok) throw new Error(`Failed to fetch ${f}`);
     chatbotHtml = await response.text()
 
+    response = await fetch(chrome.runtime.getURL(f='elements/chatbot/chatbot.css'));
+    if (!response.ok) throw new Error(`Failed to fetch ${f}`);
+    chatbotCSS = await response.text()
+
+    //Add chatbot CSS rules
+    var styleElement = document.createElement('style');
+    styleElement.textContent += chatbotCSS
+    document.head.appendChild(styleElement);
+
+    //Create element to hold chatbotHTML
     var chatbotHead = document.createElement("chatbot-head")
     chatbotHead.innerHTML = chatbotHtml
     
@@ -342,6 +352,8 @@ async function setChatbotPopUp(data) {
     
     //Set the URL of the iframe
     chatbotHead.querySelector("#chatbot").src = embedded_url
+
+    //Add element to rest of document body
     document.body.appendChild(chatbotHead)
 
 }

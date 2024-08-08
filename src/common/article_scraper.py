@@ -21,7 +21,7 @@ class ArticleScraper:
                        "newsbook"    :self._scrape_nb}
 
         match = re.search(r"(?:https?:\/\/)(?:www\.)?([a-zA-Z0-9-]+)\.com", url)
-
+        
         #Ensure that the provided website is valid
         if match and (key:=match.group(1)) in scraper_map.keys():
             self.newspaper = key
@@ -224,7 +224,6 @@ class ArticleScraper:
         
         try:
             content = requests.get(url,headers=self.headers,verify=False).content.decode('utf-8')
-
             tree = html.fromstring(content)
                         
             title = tree.cssselect("head > title")[0].text
@@ -237,7 +236,6 @@ class ArticleScraper:
             
             try:    author = tree.cssselect("#ctl00_ArticleDetails_TMI_lblAuthor")[0].text
             except: author = ""
-            print(author)
             #Thumbnail
             thumbnail_link = tree.cssselect("meta[property='og:image']")[0].attrib['content']
             imgs = [{
@@ -321,9 +319,12 @@ class ArticleScraper:
                 #We will take the alt-text as a caption for newsbook
                 txt = img.attrib['alt'].replace('-',' ')
                 
-                img_data = srcset_to_bytestring(
-                    img.attrib['srcset']
-                )
+                if 'srcset' in img.attrib:
+                    img_data = srcset_to_bytestring(
+                        img.attrib['srcset']
+                    )
+                else:
+                    img_data = self.url_to_bytestring(img.attrib['src'])
                 
                 imgs.append({
                     "data": img_data,

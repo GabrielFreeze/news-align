@@ -13,7 +13,7 @@ from torch.nn.functional import softmax
 from common.article_scraper import ArticleScraper
 from lavis.models import load_model_and_preprocess
 from common.payload import Payload, GPU_Payload, bytestring2image
-from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction
+from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, add_article
 
 class GPU_Backend():
     def __init__(self) -> None:
@@ -51,9 +51,17 @@ class GPU_Backend():
         try:    
             input_data  = payload.data
             this_job_no = payload.job_no
-                       
+            
             #Get similar articles by text
             similar_topic_articles = self._get_similar_articles_by_text(input_data)
+            
+            #Add this article to the vector database
+            article_id = add_article(input_data,self.text_collection,self.img_collection)
+            
+            if article_id is False:
+                print(f'{color.RED}Error while trying to add {color.YELLOW}{input_data["url"]}{color.RED} to vector database {color.ESC}')
+                article_id = -1 #This is to specify to the chatbot that this article is not added to the vector database
+            
             
             thumbnail_info = [] #Information about the thumbnail of the article
             
@@ -116,7 +124,7 @@ class GPU_Backend():
             #                            ^^^^^^^^^^^^^^^       ^^
             this_thumbnail_data = bytestring2image(input_data['imgs'][0]['data'])
             thumbnail_info.insert(0,{
-                "id"         : input_data['id'],
+                "id"         : article_id, #NOTE:article_id = the id of the newly added current article
                 "selector"   : (k:=input_data['imgs'][0]['css-selector']),
                 "selector_id": data2id(k), #I only need the selector_id for the current thumbnail.
                 "url"        : input_data['url'],

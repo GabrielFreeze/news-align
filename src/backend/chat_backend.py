@@ -13,15 +13,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteria, 
                         
 
 class GlobalBackend:
-    def __init__(self,model_id:str,revision:str='main',exllama:bool=True):
+    def __init__(self,model_id:str,revision:str='main'):
                 
         self.default_src_thresh = 0.68
 
         self.device = f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu'
         print(f"Device: {self.device}")
-
-        #Load Retrieval Model & Related
-        self.retrieval_model = SentenceTransformer("nomic-ai/nomic-embed-text-v1",trust_remote_code=True,device='cpu')
 
         if "HF_TOKEN" in os.environ:
             hf_token = os.environ["HF_TOKEN"]
@@ -57,7 +54,6 @@ class SessionBackend:
         self.system_prompt = ""
         with open(os.path.join("lm_prompts","chat_system_prompt.txt"), "r") as f:
             self.system_prompt = f.read()
-        
 
         return
     
@@ -69,40 +65,10 @@ class SessionBackend:
         if self.context_str == "":
             print(f'{color.RED}GET parameters context IDs could not be parsed {color.ESC}')
         
-    
-    def update_range(self,from_yr,to_yr):
-        return self.vector_db_manager.update_range(from_yr,to_yr)
-
-    def format_sources(self, source) -> str:
-        
-        return f"Title: {source.title}\n"      + \
-               f"Date: {source.date}\n"        + \
-               f"URL: {source.url}\n"          + \
-               f"Author: {source.author}\n"    + \
-               f"News Article: {source.body}\n\n"
-    
-    def format_input(self,history,retrieval_model):
+    def format_input(self,history):
 
         #Augment latest user query with related news articles
-        
-
-        # chat_history = ""
-        # last=len(history)-1
-        # for i,(user_msg,ai_msg) in enumerate(history):
             
-        #     #Latest Queries are prepended with `New`
-        #     chat_history += f"{['New ',''][i==last]}Query: {user_msg}\n"
-        #     chat_history += f"Assistant: {ai_msg}\n" if i != last else "Assistant: "
-        
-        # date = augment_date(datetime.today().strftime('%d-%m-%Y'))
-
-        #NOTE: I am experimenting with putting all related articles at the start, then the chat history at the end.
-        # Maybe it will help with the AI keeping on topic/conversation.
-        #UPDATE: This seems to greatly improve system performance.
-        # input_sequence = f'<s>[INST]{self.system_prompt}\nNEWS ARTICLES:{current_documents}\n{chat_history}[/INST]'
-
-
-        
         messages = []
         #First start with the system prompt and the retrieved context news articles
         messages = [{
@@ -130,9 +96,7 @@ class SessionBackend:
         return messages
 
     def prepare_streamer(self, history, g_bk:GlobalBackend):
-        print(self.previous_documents)
-
-        messages = self.format_input(history,g_bk.retrieval_model)
+        messages = self.format_input(history)
 
         self.streamer = TextIteratorStreamer(g_bk.tokenizer, timeout=120,skip_prompt=True,skip_special_tokens=False) 
 
@@ -158,7 +122,7 @@ class SessionBackend:
                 g_bk.tokenizer.convert_tokens_to_ids("<|eot_id|>")
            ],
         )
-        
+                
         return
 
     def stream_response(self,history,g_bk:GlobalBackend):
@@ -176,7 +140,21 @@ class SessionBackend:
             history[-1][1] += token
             yield history
 
+    def format_sources(self, source) -> str:
+        
+        return f"Title: {source['title']}\n"      + \
+                f"Date: {source['date']}\n"        + \
+                f"URL: {source['url']}\n"          + \
+                f"Author: {source['author']}\n"    + \
+                f"News Article: {source['body']}\n\n"
+    
+    def reset(self):
+        
+        #Context articles are stored in the system prompt
+        with open("chat_system_prompt.txt", "r") as f:
+            self.system_prompt = f.read()
 
+        return
 
 
 class StopOnTokens(StoppingCriteria):
