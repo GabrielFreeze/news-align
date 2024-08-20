@@ -6,12 +6,14 @@ import traceback
 import numpy as np
 import pandas as pd
 from time import time
+from tqdm import tqdm
 from PIL import Image
 from io import BytesIO
 from time import sleep
 from random import randint
 from base64 import b64decode
 from common.color import color
+from rich.progress import track
 from common.payload import data2id
 from vector_db.indexer import NewspaperIndexer
 from common.article_scraper import ArticleScraper
@@ -25,8 +27,8 @@ def get_additonal_urls():
     p = os.path.join('vector_db','urls')
     urls = []
     
-    for f in ['additional_nb.csv','additional_ind.csv']:
-        urls += pd.read_csv(os.path.join(p,f))['URL'].tolist()
+    for f in ['urls.csv']:
+        urls += pd.read_csv(os.path.join(p,f))['urls'].tolist()
     
     print(f"Scraping {len(urls)} additional URLs")
     return urls
@@ -55,13 +57,16 @@ while first or not sleep(1*3600):
     urls = []
     img_count = 0
     additional_urls = []
+    to_index = []
     
     try:
+        # if first and add_additional:
+        #     print("Iterating through URLS in local storage")
+        #     to_index += get_additonal_urls()
+
         #Download articles
         for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
-            
-            to_index = newsIndexer.get_latest_urls(newspaper,latest=30)
-            if first and add_additional: to_index += get_additonal_urls()
+            to_index = newsIndexer.get_latest_urls(newspaper,latest=30 if not first else 100)
             
             #Get article URLS
             for url in to_index: 
@@ -76,6 +81,7 @@ while first or not sleep(1*3600):
                         continue
 
                     data = payload.data
+                    tags = data['tags'] if "tags" in data else "" #Not all newspapers have tags
                     
                     # == GET ARTICLE ID ==
                     document = format_document(payload.data)
@@ -83,12 +89,19 @@ while first or not sleep(1*3600):
                     article_id = data2id(payload.data)
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
-                    if article_id in txt_collection.get()['ids']:
+                    if txt_collection.get(ids=article_id)['ids']:
                         print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        
                         # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
                         continue
-                    print(f"[{newspaper}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
+
+                    
+                    #If article was already scraped but has a unique hash,
+                    #it means the content of the articles were changed, so we update our entry in the database
+                    if previous_id:=txt_collection.get(where={"url":url})['ids']:
+                        txt_collection.delete(ids=previous_id[0])
+
+
+                    print(f"[{data['newspaper']}] {color.UNDERLINE}{data['title'][:50]}...{color.ESC}")
                     img_ids = []
                     
                     #== ADD IMAGES TO VECTOR DATABASE ==
@@ -179,16 +192,19 @@ while first or not sleep(1*3600):
                                             
                     #== ADD ARTICLE TO VECTOR DATABASE ==
                     s=time()
+                    print(document)
                     txt_collection.add(
                         documents=document,
                         metadatas={
-                            "newspaper":newspaper,
+                            "newspaper":data['newspaper'],
                             "url"      :url,
                             "title"    :data['title'],
                             "img_ids"  :",".join(img_ids), #Add reference to image entries in image database
                             "body"     :data['body'],
                             "author"   :data['author'],
-                            "date"     :data['date']
+                            "date"     :data['date'],
+                            "tags"     :tags #NOTE: I added this to give to Manuel Fenech. Not all articles will have their tags saved.
+                            #           ^^^^ Comma delimited sequence of strings    
                         },
                         
                         #ID is the hashed document, so we can detect any changes in the article.

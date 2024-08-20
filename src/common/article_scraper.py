@@ -85,19 +85,24 @@ class ArticleScraper:
             #Get Date
             date = tree.cssselect('meta[property="article:modified_time"]')[0].attrib['content']
             date = self.format_date(date)
+
+
+            #Get Tags
+            tags = script['@graph'][0]['keywords']            
             
         except Exception as e:
             traceback.print_exc()
             return Payload(error=f"Unexpected Error: {repr(e)}")
 
                                 # Join thumbnail and image data    vvv
-        return Payload(data={"title" :title,
-                             "imgs"  :[thumbnail_bytes]+imgs_bytes+slider_bytes,
-                             "body"  :body,
-                             "date"  :date,
-                             "author":author,
+        return Payload(data={"title"    :title,
+                             "imgs"     :[thumbnail_bytes]+imgs_bytes+slider_bytes,
+                             "body"     :body,
+                             "date"     :date,
+                             "author"   :author,
                              "newspaper":self.newspaper,
-                             "url"  :url})
+                             "url"      :url,
+                             "tags"     :tags})
 
     def _scrape_ts(self,url:str,ignore_imgs:bool=False):
         
@@ -181,6 +186,9 @@ class ArticleScraper:
             #Get Author
             try: author = tree.cssselect("span.name")[0].text
             except: author = ""
+
+            #Get Tags
+            tags = url.split('/')[-3]
             
             #Get Images,Captions, and CSS Selector
             #Save byte data of thumbnail
@@ -210,13 +218,14 @@ class ArticleScraper:
             traceback.print_exc()
             return Payload(f"Unexpected Error: {repr(e)}")
         
-        return Payload(data={"title" :title,
-                             "imgs"  :imgs,
-                             "body"  :body,
-                             "date"  :date,
-                             "author":author,
-                             "newspaper":self.newspaper,
-                             "url"  :url})
+        return Payload(data={"title"     :title,
+                             "imgs"      :imgs,
+                             "body"      :body,
+                             "date"      :date,
+                             "author"    :author,
+                             "newspaper" :self.newspaper,
+                             "url"       :url,
+                             "tags"      :tags})
     
     def _scrape_ind(self,url:str,ignore_imgs:bool=False):
         if not re.search(r"(?:https?:\/\/)(?:www\.)?independent\.com(\.mt)?(\/)*articles\/[0-9]{4}-[0-9]{2}-[0-9]{2}\/local-news\/*",url):
@@ -299,7 +308,7 @@ class ArticleScraper:
             thumbnail_css = "div.td-post-featured-image > a > img"
             
             #If above selector does not exist,
-            #then thumbnail has selector like rest of images
+            #then thumbnail has selector like rest of images or is a video!!
             if thumbnail:=tree.cssselect(thumbnail_css):
                 imgs=[{
                     "data": srcset_to_bytestring(

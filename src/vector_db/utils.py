@@ -60,8 +60,8 @@ class ImageEmbeddingFunction(EmbeddingFunction):
             input = bytestring2image(input)
         elif type(input) is np.ndarray:
             input = Image.fromarray(input)
-        elif type(input) is list: #TODO: This line is causing an error I think.
-            input = Image.fromarray(np.array(input))
+        elif type(input) is list:
+            input = bytestring2image(input[0])
         
         embedding = self.model.extract_features({
                 "image"     : self.vis_processors["eval"](input).unsqueeze(0).to(self.device),
@@ -83,7 +83,7 @@ class TextEmbeddingFunction(EmbeddingFunction):
         
         if not self.remote:
             self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-            self.model = AutoModel.from_pretrained("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
+            self.model = AutoModel.from_pretrained("nomic-ai/nomic-embed-text-v1", trust_remote_code=True,local_files_only=True)
             self.model.eval()
         
     def process_input(self, input) -> Embeddings:   
