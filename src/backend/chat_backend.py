@@ -6,6 +6,7 @@ from random import randint
 from threading import Thread
 from common.color import color
 from datetime import datetime as dt
+from transformers import BitsAndBytesConfig
 from vector_db.utils import TextEmbeddingFunction
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteria, StoppingCriteriaList, TextIteratorStreamer
@@ -31,12 +32,18 @@ class GlobalBackend:
         txt_fn = TextEmbeddingFunction(remote=True)
         self.vector_db = chromadb_client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
         
+
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+        )
+
         #Chat Model
         self.model     = AutoModelForCausalLM.from_pretrained(model_id,device_map=self.device,token=hf_token,
-                                                              torch_dtype=torch.float16,offload_folder="offload", revision=revision)
+                                                              quantization_config=bnb_config,revision=revision)
         
         self.tokenizer = AutoTokenizer.from_pretrained(model_id,device_map=self.device,token=hf_token,use_fast=True,
-                                                       torch_dtype=torch.float16,offload_folder="offload")
+                                                       quantization_config=bnb_config)
 
                   
 class SessionBackend:
@@ -141,17 +148,17 @@ class SessionBackend:
             yield history
 
     def format_sources(self, source) -> str:
-        
+
         return f"Title: {source['title']}\n"      + \
-                f"Date: {source['date']}\n"        + \
-                f"URL: {source['url']}\n"          + \
-                f"Author: {source['author']}\n"    + \
-                f"News Article: {source['body']}\n\n"
+               f"Date: {source['date']}\n"        + \
+               f"URL: {source['url']}\n"          + \
+               f"Author: {source['author']}\n"    + \
+               f"News Article: {source['body']}\n\n"
     
     def reset(self):
         
         #Context articles are stored in the system prompt
-        with open("chat_system_prompt.txt", "r") as f:
+        with open(os.path.join("lm_prompts","chat_system_prompt.txt"), "r") as f:
             self.system_prompt = f.read()
 
         return

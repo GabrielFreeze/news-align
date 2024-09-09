@@ -82,7 +82,6 @@ def endpoint(url:str="") -> dict:
             print(return_payload.error)
             queue_2.put(return_payload) #Place output back in queue_2 for correct process to consume                 
         
-        
         print(f'[{this_job_no}] Finished in {round(time()-all_time,2)}s')    
                 
         return return_payload.to_dict()
