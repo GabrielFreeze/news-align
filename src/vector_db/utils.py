@@ -83,7 +83,7 @@ class TextEmbeddingFunction(EmbeddingFunction):
         
         if not self.remote:
             self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-            self.model = AutoModel.from_pretrained("nomic-ai/nomic-embed-text-v1", trust_remote_code=True,local_files_only=True)
+            self.model = AutoModel.from_pretrained("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
             self.model.eval()
         
     def process_input(self, input) -> Embeddings:   

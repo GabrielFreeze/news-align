@@ -2,8 +2,8 @@ div.chatbot-container {
     position: fixed;
     bottom: 20px;  
     right: 20px;
-    width: 15vw;
-    height: 60vh;
+    width: 30em;
+    height: 55em;
     margin: 0;
     padding: 0;
     z-index: 9999; 
