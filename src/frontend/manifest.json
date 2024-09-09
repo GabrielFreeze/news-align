@@ -5,7 +5,7 @@
     "version": "2024.04.11",
 
     "permissions": [
-      "http://nbxai.research.um.edu.mt",
+      "https://nbxai.research.um.edu.mt",
       "activeTab"
     ],
 

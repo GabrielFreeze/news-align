@@ -369,7 +369,7 @@ let data;
 let token = '2752a8aef8c313eb3735511fa8a6931e'
 
 //Get API data using current URL
-fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
+fetch(`https://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
     .then(res => res.json())
     .then(data => {
 
