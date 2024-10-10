@@ -33,10 +33,10 @@ class GlobalBackend:
         self.vector_db = chromadb_client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
         
 
-        # bnb_config = BitsAndBytesConfig(
-        #     load_in_4bit=True,
-        #     bnb_4bit_compute_dtype=torch.float16,
-        # )
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+        )
         
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,

@@ -351,8 +351,7 @@ async function setChatbotPopUp(data) {
         `ids=${encodeURIComponent(context_article['id'])}`
     ).join('&');
     //TODO: Consider maybe passing the ids as a POST parameter in order to not have a very long URL
-    //TODO: I should use a domain instead of a URL
-    let embedded_url = `http://10.59.16.3:81/?${queryString}`
+    let embedded_url = `https://nbxai.research.um.edu.mt/ch/2752a8aef8c313eb3735511fa8a6931e/${queryString}`
     
     //Set the URL of the iframe
     chatbotHead.querySelector("#chatbot").src = embedded_url
@@ -374,7 +373,7 @@ let data;
 let token = '2752a8aef8c313eb3735511fa8a6931e'
 
 //Get API data using current URL
-fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
+fetch(`https://nbxai.research.um.edu.mt/${token}/it/?url=${window.location.href}`)
     .then(res => res.json())
     .then(data => {
 

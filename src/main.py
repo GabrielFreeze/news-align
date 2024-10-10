@@ -8,6 +8,7 @@ from common.payload import Payload,GPU_Payload
 from backend.spectrum_backend import GPU_Backend
 from common.article_scraper import ArticleScraper
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 app = FastAPI()
 app.add_middleware(
@@ -17,6 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
+app.add_middleware(HTTPSRedirectMiddleware)
+
 
 artScraper = ArticleScraper()
 init:bool = False
@@ -29,7 +32,7 @@ revision = "main"
 
 @app.get(f"/")
 def root() -> dict:
-    return Payload(error="Access token must be passed as a GET parameter. Eg: http://nbxai.research.um.edu.mt/{token}/?url={window.location.href}").to_dict()
+    return Payload(error="Access token must be passed as a GET parameter. Eg: http://nbxai.research.um.edu.mt/{token}/").to_dict()
     
 
 @app.get(f"/{os.environ['AI_EXT_TOKEN']}/")
@@ -104,6 +107,9 @@ def gpu_proc(queue_1:multiprocessing.Queue,
             gpu_backend(gpu_payload)
         )
 
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app=app, host="localhost", port=81)
 
 #CMD TO RUN:
-#uvicorn main:app --host=10.59.16.3 --port=443
+#uvicorn main:app --host=10.59.16.3 --port=443 --ssl-keyfile=./certs/privatekey.pem --ssl-certfile=./certs/cert.pem
