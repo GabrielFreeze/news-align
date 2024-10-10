@@ -4,6 +4,10 @@
 !.gitignore
 !LICENSE
 
+#SSL cert
+*.pfx
+*.pem
+
 #Backend
 !src/backend/*.py
 

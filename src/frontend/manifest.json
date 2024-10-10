@@ -5,8 +5,11 @@
     "version": "2024.04.11",
 
     "permissions": [
-      "https://nbxai.research.um.edu.mt",
       "activeTab"
+    ],
+
+    "host_permissions": [
+      "https://nbxai.research.um.edu.mt/*"
     ],
 
     "action": {
@@ -32,6 +35,8 @@
     "content_scripts": [{
           "js": ["scripts/d3.js","scripts/content.js"],
           "matches": ["https://timesofmalta.com/article/*",
+                      "https://www.timesofmalta.com/article/*",
+                      "https://timesofmalta.com/article/*",
                       "https://theshiftnews.com/*/*/*/*",
                       "https://www.maltatoday.com.mt/news/*/*",
                       "https://www.maltatoday.com.mt/environment/*/*",

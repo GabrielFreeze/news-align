@@ -2,6 +2,7 @@ import json
 import torch
 import chromadb
 import traceback
+import numpy as np
 from time import time
 from PIL import Image
 from io import BytesIO
@@ -10,10 +11,32 @@ from common.color import color
 from common.payload import data2id
 from typing import Union, List, Tuple
 from torch.nn.functional import softmax
+from transformers import AutoProcessor, AutoModel
 from common.article_scraper import ArticleScraper
 from lavis.models import load_model_and_preprocess
 from common.payload import Payload, GPU_Payload, bytestring2image
 from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, add_article
+
+
+def human_align(input_data):
+    
+    input_data = np.array([input_data])
+    
+    #Avoid division by zero by clipping the data slightly
+    x = input_data.clip(1e-9,1-1e-9)
+    
+    #Only apply transformation if its larger than x
+    x = np.maximum(
+        x - 6 * (x - np.log( x/(1-x) )) + 55,
+        input_data*100
+    )
+    
+    x = x.clip(0,100)
+    x = x[0]/100
+    
+    return x.item()
+
+
 
 class GPU_Backend():
     def __init__(self) -> None:
@@ -37,6 +60,10 @@ class GPU_Backend():
                                                                     model_type="pretrain", is_eval=True,
                                                                     device=self.device)     
         
+        # self.model     = AutoModel.from_pretrained("google/siglip-so400m-patch14-384",device_map=self.device,local_files_only=True)
+        # self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384",device_map=self.device,local_files_only=True)
+        
+            
         #To compute generated caption
         self.i2t_model, self.i2t_vis, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco",
                                                                     is_eval=True, device=self.device)     
@@ -112,11 +139,17 @@ class GPU_Backend():
                     "title"    : a['title'],
                     
                     #Get Thumbnail Similarity Score to Title of article
-                    "title_simil": self._img_text_matching({"data":thumbnail_data, "alt":a['title']})[0],
+                    #NEW: Perform transformation on the scores to be more aligned with human preferences
+                    "title_simil": human_align(
+                        self._img_text_matching({"data":thumbnail_data, "alt":a['title']})[0]
+                    ),
                     
                     #Get Thumbnail Similarity Score to Body of article
-                    "body_simil": self._img_text_matching({"data":thumbnail_data, "alt":a['body']})[0]
+                    "body_simil": human_align(
+                        self._img_text_matching({"data":thumbnail_data, "alt":a['body']})[0]
+                    )
                 })
+                
             
             #                                   ╔═══════════════╗
             #                                   ↓               ║ 
@@ -131,8 +164,12 @@ class GPU_Backend():
                 "newspaper"  : input_data['newspaper'],
                 "title"      : input_data['title'],
                 
-                "title_simil": self._img_text_matching({"data":this_thumbnail_data, "alt":input_data['title']})[0],
-                "body_simil" : self._img_text_matching({"data":this_thumbnail_data, "alt":input_data['body']}) [0]
+                "title_simil": human_align(
+                    self._img_text_matching({"data":this_thumbnail_data, "alt":input_data['title']})[0]
+                ),
+                "body_simil" : human_align(
+                    self._img_text_matching({"data":this_thumbnail_data, "alt":input_data['body']})[0]
+                )
             })
             
             
@@ -162,10 +199,12 @@ class GPU_Backend():
                         image_counter += 1
                         #All values in the dictionary that is being appended are single scalar values
                         this_image_info.append({                               # ^^^^^^^^^^^^^^^^^^^^
-                            "caption_simil": self._img_text_matching({
-                                "data": one_sim_img_infos['bytestring'],
-                                "alt" : one_sim_img_infos['captions'][i],
-                            }),
+                            "caption_simil": human_align(
+                                self._img_text_matching({
+                                    "data": one_sim_img_infos['bytestring'],
+                                    "alt" : one_sim_img_infos['captions'][i]
+                                })
+                            ),
                             "gen_txt"      : self._get_gencap(one_sim_img_infos['bytestring']),
                             "selector"     : (k:=one_sim_img_infos['selectors'][i]),
                             "selector_id"  : data2id(k),
@@ -206,12 +245,23 @@ class GPU_Backend():
                 if type(img['data']) is str:
                     img['data'] = bytestring2image(img['data'])
                                 
+                #TEMP!!!!!!!!!!!!!!!
+                # score = torch.sigmoid(
+                #     self.model(
+                #         **self.processor(
+                #             text=img['alt'],images=img['data'],
+                #             padding='max_length',return_tensors='pt'
+                #         ).logits_per_image
+                #     )
+                # )[0][0].detach().item()
+                
                 score = self.itm_model({
                     "image"     : self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device),
                     "text_input": img['alt']
                 }, match_head="itm")
-                
                 score = softmax(score,dim=1)[:,1].item()
+                
+                
                             
             else:
                 score = -1
@@ -220,7 +270,6 @@ class GPU_Backend():
             scores.append(score)
             
         return scores
-  
   
     def _get_gencap(self, img:Union[Image.Image,str], max_length:int=70) ->  str:
         

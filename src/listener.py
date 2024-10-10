@@ -192,7 +192,6 @@ while first or not sleep(1*3600):
                                             
                     #== ADD ARTICLE TO VECTOR DATABASE ==
                     s=time()
-                    print(document)
                     txt_collection.add(
                         documents=document,
                         metadatas={

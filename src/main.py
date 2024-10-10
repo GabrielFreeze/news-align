@@ -29,7 +29,7 @@ revision = "main"
 
 @app.get(f"/")
 def root() -> dict:
-    return Payload(error="Access token must be passed as a GET parameter. Eg: http://10.59.16.3/{token}/?url={window.location.href}").to_dict()
+    return Payload(error="Access token must be passed as a GET parameter. Eg: http://nbxai.research.um.edu.mt/{token}/?url={window.location.href}").to_dict()
     
 
 @app.get(f"/{os.environ['AI_EXT_TOKEN']}/")
@@ -103,3 +103,7 @@ def gpu_proc(queue_1:multiprocessing.Queue,
         queue_2.put(
             gpu_backend(gpu_payload)
         )
+
+
+#CMD TO RUN:
+#uvicorn main:app --host=10.59.16.3 --port=443

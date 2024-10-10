@@ -33,17 +33,27 @@ class GlobalBackend:
         self.vector_db = chromadb_client.get_or_create_collection(name="text_collection",embedding_function=txt_fn)
         
 
+        # bnb_config = BitsAndBytesConfig(
+        #     load_in_4bit=True,
+        #     bnb_4bit_compute_dtype=torch.float16,
+        # )
+        
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16
         )
+        
 
         #Chat Model
         self.model     = AutoModelForCausalLM.from_pretrained(model_id,device_map=self.device,token=hf_token,
-                                                              quantization_config=bnb_config,revision=revision)
+                                                              quantization_config=bnb_config,revision=revision,
+                                                              attn_implementation="flash_attention_2")
         
         self.tokenizer = AutoTokenizer.from_pretrained(model_id,device_map=self.device,token=hf_token,use_fast=True,
-                                                       quantization_config=bnb_config)
+                                                       quantization_config=bnb_config,
+                                                       attn_implementation="flash_attention_2")
 
                   
 class SessionBackend:
@@ -105,7 +115,7 @@ class SessionBackend:
     def prepare_streamer(self, history, g_bk:GlobalBackend):
         messages = self.format_input(history)
 
-        self.streamer = TextIteratorStreamer(g_bk.tokenizer, timeout=120,skip_prompt=True,skip_special_tokens=False) 
+        self.streamer = TextIteratorStreamer(g_bk.tokenizer, timeout=300,skip_prompt=True,skip_special_tokens=False) 
 
         #Initialise Model
         input_tokens = g_bk.tokenizer.apply_chat_template(
@@ -119,7 +129,7 @@ class SessionBackend:
             input_ids      = input_tokens,
             attention_mask = torch.ones_like(input_tokens, device=self.device),
             streamer       = self.streamer,
-            max_new_tokens = 512,
+            max_new_tokens = 1024,
             do_sample      = True,
             top_p          = 0.90,
             temperature    = 0.4,

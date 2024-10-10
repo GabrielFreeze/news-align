@@ -1,16 +1,16 @@
 div.chatbot-container {
-    position: fixed;
-    bottom: 20px;  
-    right: 20px;
-    width: 30em;
-    height: 55em;
-    margin: 0;
-    padding: 0;
-    z-index: 9999; 
+    position: fixed  !important; 
+    bottom: 20px !important;  
+    right: 20px !important;
+    width: 400px !important;
+    height: 720px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 9999 !important; 
 }
 
 #chatbot {
-    width: 100%;
-    height: 100%;
-    border: none;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
 }

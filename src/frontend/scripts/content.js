@@ -161,11 +161,6 @@ function displayDashboard(data,dashboardContainerID) {
               .style("display", "block")
               .html(`<p>${capitalize(d.newspaper)} - ${d.title}</p>`);
         })
-        .on("mousemove", function(event) {
-            d3.select("#d3-preview")
-              .style("left",(mouseX+10)-parent.offsetWidth+ "px")
-              .style("top", (mouseY-10)-parent.offsetWidth+ "px");
-        })
         .on("mouseout", function() {
             d3.select("#d3-preview")
               .style("display", "none");
@@ -173,32 +168,41 @@ function displayDashboard(data,dashboardContainerID) {
     
 
     //Add labels on each data point
-    svg.selectAll("text.label")
-       .data(data)
-       .enter().append("text")
-       .attr("x", d => xScale(d.score))
-       .attr("y", (d,i) => 20 + line_height + yOffsets[i])
-       .text(d => d.score.toFixed(2))
-       .attr("text-anchor", "middle")
-       .style("font-size", "1rem");
+    // svg.selectAll("text.label")
+    //    .data(data)
+    //    .enter().append("text")
+    //    .attr("x", d => xScale(d.score))
+    //    .attr("y", (d,i) => 20 + line_height + yOffsets[i])
+    //    .text(d => d.score.toFixed(2))
+    //    .attr("text-anchor", "middle")
+    //    .style("font-size", "1rem");
 
-    //Add text boxes at each end of the line
+    //Add text boxes to the line
     svg.append("text")
        .attr("x", margin.left)
-       .attr("y", height / 2 + margin.top - 10)
+       .attr("y", height - margin.top)
        .attr("text-anchor", "start")
        .attr("font-size", "12px")
        .attr("fill", "black")
-       .text("Weak Match")
-       .style("font-size", "1rem");
+       .text("Less Similar")
+       .style("font-size", "1rem")
+
+    svg.append("text")
+       .attr("x", width/2 + margin.left - 50)
+       .attr("y", height - margin.top)
+       .attr("text-anchor", "start")
+       .attr("font-size", "12px")
+       .attr("fill", "black")
+       .text("Adequate")
+       .style("font-size", "1rem")
    
-       svg.append("text")
+    svg.append("text")
        .attr("x", width + margin.left)
-       .attr("y", height / 2 + margin.top - 10)
+       .attr("y", height - margin.top)
        .attr("text-anchor", "end")
        .attr("font-size", "12px")
        .attr("fill", "black")
-       .text("Strong Match")
+       .text("Good")
        .style("font-size", "1rem");
 
 }
@@ -267,7 +271,7 @@ async function setThumbnailInfoPopUp(data) {
     //Append a preview container that will display the target articles on hover
     previewContainer = document.createElement('div')
     previewContainer.id = "d3-preview"
-    hoverElement.appendChild(previewContainer)
+    document.body.appendChild(previewContainer)
 
     //Add EventListeners to inject D3.js chart when hovering on hoverElement
     setDisplayOnHover(
@@ -358,10 +362,11 @@ async function setChatbotPopUp(data) {
 
 }
 
-
 document.addEventListener('mousemove', function(event) {
-    mouseX = event.clientX;
-    mouseY = event.clientY;
+    title_box = document.getElementById("d3-preview")
+    title_box.style.left = (event.clientX+10) + 'px'
+    title_box.style.top  = (event.clientY+10) + 'px'
+    
 });
 
 let data;
@@ -369,7 +374,7 @@ let data;
 let token = '2752a8aef8c313eb3735511fa8a6931e'
 
 //Get API data using current URL
-fetch(`http://localhost/${token}/?url=${window.location.href}`)
+fetch(`http://nbxai.research.um.edu.mt/${token}/?url=${window.location.href}`)
     .then(res => res.json())
     .then(data => {
 
