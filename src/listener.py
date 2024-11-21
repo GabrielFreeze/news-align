@@ -66,7 +66,7 @@ while first or not sleep(1*3600):
 
         #Download articles
         for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
-            to_index = newsIndexer.get_latest_urls(newspaper,latest=30 if not first else 100)
+            to_index = newsIndexer.get_latest_urls(newspaper,latest=30 if not first else 300)
             
             #Get article URLS
             for url in to_index: 

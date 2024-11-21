@@ -12,6 +12,11 @@
       "https://nbxai.research.um.edu.mt/*"
     ],
 
+    "externally_connectable": {
+      "matches": ["https://nbxai.research.um.edu.mt/*"]
+    },
+
+
     "action": {
       "default_popup": "elements/default_popup/default_popup.html",
       "default_icon": "images/default_icon.png"

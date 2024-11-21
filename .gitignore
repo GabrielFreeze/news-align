@@ -1,8 +1,10 @@
-# Add the path to your file followed by ! in order to whitelist it from the .gitifnore file
+# Add the path to your file followed by ! in order to whitelist it from the .gitignore file
 *
 !*/
 !.gitignore
 !LICENSE
+
+!nginx-1.27.2/conf
 
 #Backend
 !src/backend/*.py
