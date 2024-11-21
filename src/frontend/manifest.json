@@ -9,7 +9,8 @@
     ],
 
     "host_permissions": [
-      "https://nbxai.research.um.edu.mt/*"
+      "https://nbxai.research.um.edu.mt/*",
+      "https://*/*"
     ],
 
     "externally_connectable": {
@@ -39,13 +40,11 @@
 
     "content_scripts": [{
           "js": ["scripts/d3.js","scripts/content.js"],
-          "matches": ["https://timesofmalta.com/article/*",
-                      "https://www.timesofmalta.com/article/*",
-                      "https://timesofmalta.com/article/*",
-                      "https://theshiftnews.com/*/*/*/*",
-                      "https://www.maltatoday.com.mt/news/*/*",
-                      "https://www.maltatoday.com.mt/environment/*/*",
-                      "https://www.independent.com.mt/articles/*/local-news/*",
+          "matches": ["https://timesofmalta.com/*",
+                      "https://www.timesofmalta.com/*",
+                      "https://theshiftnews.com/*",
+                      "https://www.maltatoday.com.mt/*",
+                      "https://www.independent.com.mt/*",
                       "https://newsbook.com.mt/en/*"]
     }]
   }
