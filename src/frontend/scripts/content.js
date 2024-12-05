@@ -351,7 +351,7 @@ async function setChatbotPopUp(data) {
         `ids=${encodeURIComponent(context_article['id'])}`
     ).join('&');
     //TODO: Consider maybe passing the ids as a POST parameter in order to not have a very long URL
-    let embedded_url = `https://nbxai.research.um.edu.mt/ch/${token}/${queryString}`
+    let embedded_url = `https://nbxai.research.um.edu.mt/ch/${token}/?${queryString}`
     
     //Set the URL of the iframe
     chatbotHead.querySelector("#chatbot").src = embedded_url

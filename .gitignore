@@ -4,7 +4,7 @@
 !.gitignore
 !LICENSE
 
-!nginx-1.27.2/conf
+!nginx-1.27.2/conf/*
 
 #Backend
 !src/backend/*.py
@@ -22,7 +22,9 @@
 !src/common/*.py
 
 !src/main.py
+!src/start_chat.py
 !src/vectordb_emb_api.py
+!src/vectordb2folder.py
 !src/listener.py
 
 !src/test.ipynb

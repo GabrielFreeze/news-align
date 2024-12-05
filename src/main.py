@@ -13,10 +13,17 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
+    # allow_origins=[
+    #     "https://timesofmalta.com",
+    #     "https://www.timesofmalta.com",
+    #     "https://theshiftnews.com",
+    #     "https://www.maltatoday.com.mt",
+    #     "https://www.independent.com.mt",
+    #     "https://newsbook.com.mt"
+    # ],
+    # allow_methods=["*"],
+    # allow_headers=["*"],
+    # allow_credentials=True,
 )
 # app.add_middleware(HTTPSRedirectMiddleware)
 
