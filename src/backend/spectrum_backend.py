@@ -6,17 +6,16 @@ import numpy as np
 from time import time
 from PIL import Image
 from io import BytesIO
-from base64 import b64decode
+from base64 import b64encode
 from common.color import color
 from common.payload import data2id
 from typing import Union, List, Tuple
 from torch.nn.functional import softmax
-from transformers import AutoProcessor, AutoModel
+from backend.gradcam_backend import GradCamManager
 from common.article_scraper import ArticleScraper
 from lavis.models import load_model_and_preprocess
 from common.payload import Payload, GPU_Payload, bytestring2image
 from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, add_article
-
 
 def human_align(input_data):
     
@@ -35,8 +34,6 @@ def human_align(input_data):
     x = x[0]/100
     
     return x.item()
-
-
 
 class GPU_Backend():
     def __init__(self) -> None:
@@ -59,14 +56,55 @@ class GPU_Backend():
         self.itm_model, self.itm_vis, _ = load_model_and_preprocess(name="blip2_image_text_matching",
                                                                     model_type="pretrain", is_eval=True,
                                                                     device=self.device)     
-        
-        # self.model     = AutoModel.from_pretrained("google/siglip-so400m-patch14-384",device_map=self.device,local_files_only=True)
-        # self.processor = AutoProcessor.from_pretrained("google/siglip-so400m-patch14-384",device_map=self.device,local_files_only=True)
-        
-            
         #To compute generated caption
         self.i2t_model, self.i2t_vis, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco",
-                                                                    is_eval=True, device=self.device)     
+                                                                    is_eval=True, device=self.device)
+
+        #The goal of this class is to leverage the already instantiated BLIP model
+        #in order not to re-load them to memory while also being compatible with the gradcam library
+        class GradCamModelInterface(torch.nn.Module):
+            def __init__(self, parent:GPU_Backend):
+                super(GradCamModelInterface, self).__init__()
+
+                self.parent = parent
+                self.device = self.parent.device
+                self.itm_model, self.itm_vis = self.parent.itm_model, self.parent.itm_vis
+                self.label = "" #This is set by GradCamManager
+
+                self.targets = [
+                    # self.itm_model.visual_encoder.blocks[-1].norm1,
+                    # self.itm_model.Qformer.cls.predictions.transform.LayerNorm,
+                    self.itm_model.Qformer.bert.encoder.layer[ 0 ].crossattention.self.value,
+                    # self.itm_model.Qformer.bert.encoder.layer[-2 ].crossattention.self.value,
+                    # self.itm_model.Qformer.bert.encoder.layer[-4 ].crossattention.self.value,
+                    # self.itm_model.Qformer.bert.encoder.layer[-6 ].crossattention.self.value,
+                    # self.itm_model.Qformer.bert.encoder.layer[-8 ].crossattention.self.value,
+                    # self.itm_model.Qformer.bert.encoder.layer[-10].crossattention.self.value,
+                ]
+
+
+            def forward(self, img):   
+                outputs = self.itm_model({
+                    "image"     : self.itm_vis["eval"](img).unsqueeze(0).to(self.device),
+                    "text_input": self.label
+                }, match_head="itm")
+
+                prob = outputs.softmax(dim=1)
+                return prob
+            
+            def reshape(self,input_tensor, height=16, width=16):
+                remove_cls_token = input_tensor.shape[1] == (height*width)+1
+                input_tensor = input_tensor[:, remove_cls_token:, :].reshape(
+                    input_tensor.size(0),height, width, input_tensor.size(2)
+                )
+                
+                #Bring the channels to the first dimension, like in CNNs.
+                input_tensor = input_tensor.transpose(2, 3).transpose(1, 2)
+                return torch.tensor(input_tensor,dtype=torch.float32,device=self.device)
+
+        gradcamModelInterface = GradCamModelInterface(parent=self)
+        self.gradcamManager = GradCamManager(gradcamModelInterface)
+
     
     def __call__(self,payload:GPU_Payload) -> GPU_Payload:
         s=time()
@@ -95,8 +133,8 @@ class GPU_Backend():
             #Extract thumbnail data from the related articles
             for a in similar_topic_articles:
 
+                #If there are no img_ids, then just skip this similar_topic_article
                 if a['img_ids'] == "":
-                    #If there are no img_ids, then just skip this similar_topic_article
                     continue
                                 
                 img_ids = a['img_ids'].split(',')
@@ -139,8 +177,7 @@ class GPU_Backend():
                     "title"    : a['title'],
                     
                     #Get Thumbnail Similarity Score to Title of article
-                    #NEW: Perform transformation on the scores to be more aligned with human preferences
-                    "title_simil": human_align(
+                    "title_simil": human_align( #Perform transformation on the scores to be more aligned with human preferences
                         self._img_text_matching({"data":thumbnail_data, "alt":a['title']})[0]
                     ),
                     
@@ -169,6 +206,10 @@ class GPU_Backend():
                 ),
                 "body_simil" : human_align(
                     self._img_text_matching({"data":this_thumbnail_data, "alt":input_data['body']})[0]
+                ),
+                
+                "title_simil_gradcam": numpy2bytestring(
+                    self.gradcamManager(img=this_thumbnail_data,txt=input_data['title'],aug_smooth=True,eigen_smooth=True)
                 )
             })
             
@@ -244,24 +285,12 @@ class GPU_Backend():
                 
                 if type(img['data']) is str:
                     img['data'] = bytestring2image(img['data'])
-                                
-                #TEMP!!!!!!!!!!!!!!!
-                # score = torch.sigmoid(
-                #     self.model(
-                #         **self.processor(
-                #             text=img['alt'],images=img['data'],
-                #             padding='max_length',return_tensors='pt'
-                #         ).logits_per_image
-                #     )
-                # )[0][0].detach().item()
-                
+            
                 score = self.itm_model({
                     "image"     : self.itm_vis["eval"](img['data']).unsqueeze(0).to(self.device),
                     "text_input": img['alt']
                 }, match_head="itm")
-                score = softmax(score,dim=1)[:,1].item()
-                
-                
+                score = softmax(score,dim=1)[:,1].item()       
                             
             else:
                 score = -1
@@ -407,3 +436,12 @@ class GPU_Backend():
 def format_document(payload_data:dict,query:bool=False):
         captions = json.dumps([img['alt'] or "" for img in payload_data['imgs']])
         return f"search_{['document','query'][query]}:{payload_data['title']}. {payload_data['body']}. {captions}"
+
+def numpy2bytestring(img:np.array, img_format="JPEG") -> str:
+    assert len(img.shape) == 3
+
+    with BytesIO() as buffer:
+        Image.fromarray(img).save(buffer, format=img_format)
+        base64_string = b64encode(buffer.getvalue()).decode("ascii")
+    
+    return base64_string

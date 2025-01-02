@@ -233,6 +233,46 @@ async function setDisplayOnHover(hoverElement,dashboardContainer,data) {
 }
 
 
+function addGradCamIcon(thumbnailElement, gradCamImage) {
+
+    // Create the icon element
+    const icon = document.createElement('div');
+    icon.textContent = '🔍'; // Replace with your preferred icon
+    icon.style.position = 'absolute';
+    icon.style.top = '5px';
+    icon.style.left = '-5px';
+    icon.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    icon.style.color = '#fff';
+    icon.style.padding = '5px';
+    icon.style.borderRadius = '50%';
+    icon.style.cursor = 'pointer';
+    icon.style.zIndex = '10';
+
+    //Position the thumbnail's parent relative if not already
+    const parent = thumbnailElement.parentElement;
+    if (getComputedStyle(parent).position === 'static') {
+        parent.style.position = 'relative';
+    }
+    parent.appendChild(icon);
+
+    thumbnailElement.classList.remove('loaded');
+    thumbnailElement.removeAttribute('srcset');
+    thumbnailElement.removeAttribute('sizes');
+
+    //Change to gradcam on mousenter
+    icon.addEventListener('mouseenter', () => {
+        thumbnailElement.dataset.originalSrc = thumbnailElement.src;
+        thumbnailElement.src = `data:image/jpg;base64, ${gradCamImage}`;
+    });
+    
+    //Change back to original on mouseleave
+    icon.addEventListener('mouseleave', () => {
+        thumbnailElement.src = thumbnailElement.dataset.originalSrc;
+    });
+
+}
+
+
 //SetUp ThumbnaiInfo 1D Spectrum upon a successful API return
 async function setThumbnailInfoPopUp(data) {
     
@@ -320,6 +360,9 @@ async function setThumbnailInfoPopUp(data) {
         
         });
     }
+
+    //Setup GradCam hoverable icon
+    addGradCamIcon(thumbnailElement,thumbnailInfo[0]['title_simil_gradcam'])
 
 }
 

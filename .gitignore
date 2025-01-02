@@ -22,6 +22,7 @@
 !src/common/*.py
 
 !src/main.py
+!src/tom_get_previous_urls.py
 !src/start_chat.py
 !src/vectordb_emb_api.py
 !src/vectordb2folder.py

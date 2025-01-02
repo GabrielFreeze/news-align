@@ -27,14 +27,14 @@ def get_additonal_urls():
     p = os.path.join('vector_db','urls')
     urls = []
     
-    for f in ['urls.csv']:
-        urls += pd.read_csv(os.path.join(p,f))['urls'].tolist()
+    for f in ['additional_tom.csv']:
+        urls += pd.read_csv(os.path.join(p,f))['URL'].tolist()
     
     print(f"Scraping {len(urls)} additional URLs")
     return urls
             
 first = True
-add_additional = False
+add_additional = True
  
 #INITIALISE
 client = chromadb.HttpClient(host="localhost",port=8000)
@@ -60,12 +60,12 @@ while first or not sleep(1*3600):
     to_index = []
     
     try:
-        # if first and add_additional:
-        #     print("Iterating through URLS in local storage")
-        #     to_index += get_additonal_urls()
+        if first and add_additional:
+            print("Iterating through URLS in local storage")
+            to_index += get_additonal_urls()
 
         #Download articles
-        for newspaper in ["independent","newsbook","timesofmalta","theshift","maltatoday"]:
+        for newspaper in ["timesofmalta","maltatoday","independent","newsbook","theshift"]:
             to_index = newsIndexer.get_latest_urls(newspaper,latest=30 if not first else 300)
             
             #Get article URLS
@@ -122,7 +122,7 @@ while first or not sleep(1*3600):
                             '''In the case of a repeated image, we just want to update the metadata,
                             so we keep track of all articles that featured the image'''
 
-                           #TODO: You are appending the css-selector in order to locate this image,
+                           #FIXME: You are appending the css-selector in order to locate this image,
                            #however since one css-selector can have multiple images allocated to it,
                            #you are not recording the position of the image within the css-selector.
                            #As a result, from the css-selector alone, we only get the position of
