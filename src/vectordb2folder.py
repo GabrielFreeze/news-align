@@ -5,7 +5,7 @@ from common.color import color
 from multiprocessing import cpu_count
 from common.payload import bytestring2image
 
-SAVE_DIR = os.path.join("..","vectordb_data")
+SAVE_DIR = os.path.join("D:","vectordb_data")
 if not os.path.isdir(SAVE_DIR):
     os.mkdir(SAVE_DIR)
 

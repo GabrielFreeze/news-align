@@ -82,7 +82,6 @@ class GPU_Backend():
                     # self.itm_model.Qformer.bert.encoder.layer[-10].crossattention.self.value,
                 ]
 
-
             def forward(self, img):   
                 outputs = self.itm_model({
                     "image"     : self.itm_vis["eval"](img).unsqueeze(0).to(self.device),
@@ -105,7 +104,6 @@ class GPU_Backend():
         gradcamModelInterface = GradCamModelInterface(parent=self)
         self.gradcamManager = GradCamManager(gradcamModelInterface)
 
-    
     def __call__(self,payload:GPU_Payload) -> GPU_Payload:
         s=time()
         input_data = {}
@@ -209,7 +207,8 @@ class GPU_Backend():
                 ),
                 
                 "title_simil_gradcam": numpy2bytestring(
-                    self.gradcamManager(img=this_thumbnail_data,txt=input_data['title'],aug_smooth=True,eigen_smooth=True)
+                    self.gradcamManager(img=this_thumbnail_data,txt=input_data['title'],
+                                        aug_smooth=False,eigen_smooth=True)
                 )
             })
             

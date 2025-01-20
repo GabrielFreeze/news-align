@@ -27,14 +27,14 @@ def get_additonal_urls():
     p = os.path.join('vector_db','urls')
     urls = []
     
-    for f in ['additional_tom.csv']:
+    for f in ['additional_tom.csv','additional_mt.csv','additional_ind.csv','additional_nb.csv']:
         urls += pd.read_csv(os.path.join(p,f))['URL'].tolist()
     
     print(f"Scraping {len(urls)} additional URLs")
     return urls
             
 first = True
-add_additional = True
+add_additional = False
  
 #INITIALISE
 client = chromadb.HttpClient(host="localhost",port=8000)
@@ -66,8 +66,11 @@ while first or not sleep(1*3600):
 
         #Download articles
         for newspaper in ["timesofmalta","maltatoday","independent","newsbook","theshift"]:
-            to_index = newsIndexer.get_latest_urls(newspaper,latest=30 if not first else 300)
             
+            if not first:
+                to_index=[]
+
+            to_index += newsIndexer.get_latest_urls(newspaper,latest=30 if not first else 300)
             #Get article URLS
             for url in to_index: 
                 try:

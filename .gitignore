@@ -6,6 +6,8 @@
 
 !nginx-1.27.2/conf/*
 
+!chromaviz.ipynb
+
 #Backend
 !src/backend/*.py
 
