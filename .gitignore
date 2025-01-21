@@ -16,6 +16,8 @@
 !src/frontend/elements/*/*
 !src/frontend/scripts/*
 !src/frontend/manifest.json
+#D3.js assets
+!src/assets/*
 
 #Vector_DB
 !src/vector_db/*.py
