@@ -40,10 +40,12 @@ revision = "main"
 @app.get(f"/")
 def root() -> dict:
     return Payload(error="Access token must be passed as a GET parameter. Eg: http://nbxai.research.um.edu.mt/{token}/").to_dict()
-    
 
-@app.get(f"/{os.environ['AI_EXT_TOKEN']}/")
-def endpoint(url:str="") -> dict:
+
+@app.get("/{token}/")
+def endpoint(token: str, url: str = "") -> dict:
+    if token != os.environ.get('AI_EXT_TOKEN', ''):
+        return {'error':1}
     try:
         global init, job_no, artScraper, queue_1, queue_2
         

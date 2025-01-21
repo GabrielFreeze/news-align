@@ -42,6 +42,7 @@ class GPU_Backend():
         
         client = chromadb.HttpClient(host="localhost",port=8000)
         
+        
         self.backup_scraper = ArticleScraper()       
         
         #Initialise Article Vector Database
@@ -49,7 +50,7 @@ class GPU_Backend():
         self.text_collection = client.get_or_create_collection(name="text_collection",embedding_function=self.text_fn)
 
         #Initialise Image Vector Database
-        self.img_fn = ImageEmbeddingFunction(remote=True)
+        self.img_fn = ImageEmbeddingFunction(remote=False)
         self.img_collection = client.get_or_create_collection(name="img_collection",embedding_function=self.img_fn)
         
         #To compute similarity scores

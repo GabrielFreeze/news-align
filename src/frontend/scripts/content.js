@@ -412,17 +412,64 @@ document.addEventListener('mousemove', function(event) {
 });
 
 let data;
-//TODO: Don't hardcode access token.
-let token = '2752a8aef8c313eb3735511fa8a6931e'
+
+// Function to get a cookie by name
+function getCookie(name) {
+    let matches = document.cookie.match(new RegExp(
+        "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+    ));
+    return matches ? decodeURIComponent(matches[1]) : undefined;
+}
+
+// Function to set a cookie
+function setCookie(name, value, options = {}) {
+    options = {
+        path: '/',
+        // add other defaults as necessary
+        ...options
+    };
+
+    if (options.expires instanceof Date) {
+        options.expires = options.expires.toUTCString();
+    }
+
+    let updatedCookie = encodeURIComponent(name) + "=" + encodeURIComponent(value);
+
+    for (let optionKey in options) {
+        updatedCookie += "; " + optionKey;
+        let optionValue = options[optionKey];
+        if (optionValue !== true) {
+            updatedCookie += "=" + optionValue;
+        }
+    }
+
+    document.cookie = updatedCookie;
+}
+
+// Retrieve the access token from cookies or prompt the user to enter it
+let token = getCookie('access_token');
+if (!token) {
+    token = prompt('[NewsAlign] Please enter your access token:');
+    if (token) {
+        setCookie('access_token', token, { 'max-age': 3600 * 24 * 365 });
+    } else {
+        throw new Error('Access token is required');
+    }
+}
 
 //Get API data using current URL
 fetch(`https://nbxai.research.um.edu.mt/it/${token}/?url=${window.location.href}`)
     .then(res => res.json())
     .then(data => {
-
-        if (data['error'] != "") {
+        
+        //Ensure access token is valid and no error was returned from backend
+        if (data['error'] == 1){
+            token = prompt('[NewsAlign] Invalid token. Try again:');
+            if (token) setCookie('access_token', token, { 'max-age': 3600 * 24 * 365 });
+            else throw new Error('Access token is required');
+        } else if (data['error'] != "") {
             throw new Error(`Error while processing data: ${data['error']}`)
-        } 
+        }  
         
         //Prepare thumbnail pop-up
         setThumbnailInfoPopUp(data['data'])
