@@ -4,7 +4,7 @@
     <img src="readme_supplement/screenshot.png" alt="NewsAlign Screenshot">
 </p>
 
-NewsAlign is a Chrome web-extension that augments the users webpage when viewing articles from Maltese newspapers. NewsAlign shows additional event-level articles from different sources that provide more context on the news coverage of the article being read. These event-level articles are displayed on our novel image-text similarity spectrum, which highlights the thumbnail-headline similarity of that article; hinting at potential picture-related bias. This is done via a Vision-Language Model (VLM) namely BLIP-2. Additinally, LLaMA3.1-8B-instruct is used to provide personalised summaries and explanations from all available event-level articles.
+NewsAlign is a Chrome web-extension that augments the users webpage when viewing articles from Maltese newspapers. NewsAlign shows additional event-level articles from different sources that provide more context on the news coverage of the article being read. These event-level articles are displayed on our novel image-text similarity spectrum, which highlights the thumbnail-headline similarity of that article; hinting at potential picture-related bias. This is done via a Vision-Language Model (VLM) namely BLIP-2.
 
 NewsAlign's backend and frontend code is made public, however as of 21/01/2025 the backend is not running on any live server. NewsAlign is part of a broader research project funded by Xjenza Malta.
 
@@ -56,7 +56,6 @@ conda activate vectordb
 cd newsalign/src
 uvicorn vectordb_emb_api:app --host=localhost --port=8001
 ```
-
 
 
 ### News Article Listener - Usage
