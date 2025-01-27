@@ -125,10 +125,13 @@ class NewspaperIndexer:
                     )
                     
                     articles_remaining = tree.cssselect("div.image-section a")
-                    
-                urls.append(
-                    f"https://www.independent.com.mt/{articles_remaining.pop(0).attrib['href']}"
-                )
+                
+                if articles_remaining:
+                    urls.append(
+                        f"https://www.independent.com.mt/{articles_remaining.pop(0).attrib['href']}"
+                    )
+                else:
+                    break
             except Exception:
                 traceback.print_exc()
         return urls

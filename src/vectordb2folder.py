@@ -10,7 +10,7 @@ if not os.path.isdir(SAVE_DIR):
     os.mkdir(SAVE_DIR)
 
 m = cpu_count()
-print(f'Available Cores: {color.BLUE}{m}{color.ESC}')
+m=16 #Limiting number of sub-processes
 MAX_ITEMS=18_000
 LIMIT = MAX_ITEMS//m
 
@@ -66,6 +66,7 @@ def worker(n:int,offset:int,txt_collection,img_collection,all_img_ids):
             date = article_metadata["date"] #Date is already in desired format
 
         data.append([
+            articles['ids'][i],
             article_metadata["title"],
             article_metadata["newspaper"],
             article_metadata["url"],
@@ -77,11 +78,11 @@ def worker(n:int,offset:int,txt_collection,img_collection,all_img_ids):
         ])
             
         #Save data every X articles
-        if (i+1)%200:
-            pd.DataFrame(data,columns=["title","newspaper","url","date","imgs","body","author","tags"])\
+        if (i+1)%500:
+            pd.DataFrame(data,columns=["id","title","newspaper","url","date","imgs","body","author","tags"])\
             .to_csv(os.path.join(this_save_dir,f"data-{n}.csv"),index=False, encoding='utf-8')
 
-    pd.DataFrame(data,columns=["title","newspaper","url","date","imgs","body","author","tags"])\
+    pd.DataFrame(data,columns=["id","title","newspaper","url","date","imgs","body","author","tags"])\
         .to_csv(os.path.join(this_save_dir,f"data-{n}.csv"),index=False,encoding='utf-8')
 
 
@@ -95,6 +96,9 @@ def main():
     from time import time
     from multiprocessing import Process, Manager
     from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction
+
+    
+    print(f'Available Cores: {color.BLUE}{m}{color.ESC}')
 
     #Initialising ChromaDB
     s=time()
@@ -110,6 +114,8 @@ def main():
 
     print(f'{color.YELLOW}{round(time()-s,2)}s{color.ESC}')
 
+
+    #NOTE: Retrieving the img_ids like this also retrieves deleted entries.
     #Retrieve all image ids to circumvent the costly operation
     #of trying to retrieve something from the database that doesnt exist
     s=time()
@@ -166,7 +172,7 @@ def main():
 
     #Save aggregate csv
     pd.concat([pd.read_csv(p) for p in df_paths],ignore_index=True)\
-    .to_csv(os.path.join(SAVE_DIR,'data.csv'),index=False)
+      .to_csv(os.path.join(SAVE_DIR,'data.csv'),index=False)
 
     #Remove previous workers' csvs
     for p in df_paths:

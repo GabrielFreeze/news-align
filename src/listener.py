@@ -22,20 +22,27 @@ from vector_db.utils import ImageEmbeddingFunction, TextEmbeddingFunction, forma
 import warnings
 warnings.filterwarnings("ignore")
 
+#TODO: Nomic Embed is now multimodal, so preferably the image collection should be merged with the text collection
+#TODO: The search prefixes require a space, so all articles should be rembedded with the space after the prefix for best performance
 
 def get_additonal_urls():
     p = os.path.join('vector_db','urls')
     urls = []
     
-    for f in ['additional_tom.csv','additional_mt.csv','additional_ind.csv','additional_nb.csv']:
+    for f in ['additional_nb.csv']:
         urls += pd.read_csv(os.path.join(p,f))['URL'].tolist()
-    
+    urls = list(set(urls)) #Remove duplicates
+        
     print(f"Scraping {len(urls)} additional URLs")
     return urls
-            
+
+
 first = True
 add_additional = False
- 
+refresh_mode = False
+if refresh_mode:
+    print("Running in REFRESH Mode")
+
 #INITIALISE
 client = chromadb.HttpClient(host="localhost",port=8000)
 
@@ -93,9 +100,11 @@ while first or not sleep(1*3600):
                     
                     #Discard non-unique articles. Non-unique articles mean that the img-txt pairs are not unique
                     if txt_collection.get(ids=article_id)['ids']:
-                        print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
-                        # txt_collection.delete(ids=article_id) #TEMP: Replace previously collected articles
-                        continue
+                        if refresh_mode:
+                            txt_collection.delete(ids=article_id) #Replace previously collected articles
+                        else:
+                            print(f"{color.YELLOW}Article is non-unique... Skipping: {str(randint(0,2048)).zfill(4)}{color.ESC}",end='\r')
+                            continue
 
                     
                     #If article was already scraped but has a unique hash,
@@ -192,7 +201,6 @@ while first or not sleep(1*3600):
                         except Exception as e:
                             traceback.print_exc()
                     print(f"\n{'='*45}\n")
-                                            
                     #== ADD ARTICLE TO VECTOR DATABASE ==
                     s=time()
                     txt_collection.add(
@@ -225,10 +233,10 @@ while first or not sleep(1*3600):
         #Saving list of urls.
         p = os.path.join('vector_db','urls',"urls.csv")
         all_urls = set(
-            pd.read_csv(p)["urls"].to_list() + urls
+            pd.read_csv(p)["URL"].to_list() + urls
         )
         
-        (pd.DataFrame(all_urls,columns=["urls"])
+        (pd.DataFrame(all_urls,columns=["URL"])
             .to_csv(p,index=False))
             
     except Exception as e:

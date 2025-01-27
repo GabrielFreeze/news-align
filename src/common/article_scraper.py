@@ -5,6 +5,7 @@ import traceback
 from lxml import html
 from time import time,sleep
 from base64 import b64encode
+from datetime import datetime
 from lxml.html import HtmlElement
 from common.payload import Payload
 from dateutil.parser import parse as date_parse
@@ -13,6 +14,7 @@ class ArticleScraper:
     def __init__(self):
         self.headers = {'User-Agent':"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36"}
         self.newspaper = None
+        self.date_format = "%d-%m-%Y"
     def scrape(self, url:str,ignore_imgs:bool=False) -> Payload:
         scraper_map = {"timesofmalta":self._scrape_tom,
                        "theshiftnews":self._scrape_ts,
@@ -83,9 +85,19 @@ class ArticleScraper:
             body = self.get_nested_text(tree.xpath('/html/body/div/main/article/div[2]/div')[0])
 
             #Get Date
-            date = tree.cssselect('meta[property="article:modified_time"]')[0].attrib['content']
-            date = self.format_date(date)
+            modified_date  = self.format_date(
+                tree.cssselect('meta[property="article:modified_time"]' )[0].attrib['content']
+            )
+            published_date = self.format_date(
+                tree.cssselect('meta[property="article:published_time"]')[0].attrib['content']
+            )
+            days_diff = (
+                datetime.strptime(modified_date , self.date_format) -
+                datetime.strptime(published_date, self.date_format)
+            ).days
 
+            #NOTE: Use the original date if modified date is more than 2 weeks later.
+            date = published_date if days_diff >= 14 else modified_date
 
             #Get Tags
             tags = script['@graph'][0]['keywords']            
@@ -381,10 +393,12 @@ class ArticleScraper:
         return b64encode(img_data,altchars=b'-_').decode("ascii")
 
     def format_date(self,date:str):
-        
+
         if date is None:
             return ""
-        
-        return (date_parse(date,dayfirst=True,ignoretz=True,yearfirst=False)
-                .date()
-                .strftime("%d-%m-%Y"))
+        elif self.newspaper in ['timesofmalta','newsbook']:
+            return datetime.fromisoformat(date).strftime(self.date_format)
+        else: 
+            return (date_parse(date,dayfirst=True,ignoretz=True,yearfirst=False)
+                    .date()
+                    .strftime(self.date_format))

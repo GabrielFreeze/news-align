@@ -3,10 +3,12 @@
 !*/
 !.gitignore
 !LICENSE
+!README.md
 
 !nginx-1.27.2/conf/*
 
 !chromaviz.ipynb
+!sentiment.ipynb
 
 #Backend
 !src/backend/*.py
