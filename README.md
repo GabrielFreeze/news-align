@@ -11,9 +11,9 @@ NewsAlign's backend and frontend code is made public, however as of 21/01/2025 t
 Read the documentation here.
 
 <p align="center">
-    <img src="readme_supplement/fusion.png" alt="Image 1" style="display: inline-block; margin-right: 10px;">
-    <img src="readme_supplement/research_excellence.png" alt="Image 2" style="display: inline-block; margin-right: 10px;">
-    <img src="readme_supplement/uom_ai.png" alt="Image 3" style="display: inline-block;">
+    <img src="readme_supplement/uom_ai.png" alt="Image 3" width="40%">
+    <img src="readme_supplement/fusion.png" alt="Image 1" width="25%">
+    <img src="readme_supplement/research_excellence.png" alt="Image 2" width="25%">
 </p>
 
 ---
